@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 
+import { phoneSchema } from "./validation";
+
 export const PASSWORD_MIN_LENGTH = 8;
 
 export const credentialsSchema = z.object({
@@ -16,11 +18,8 @@ export const credentialsSchema = z.object({
 
 export type CredentialsInput = z.infer<typeof credentialsSchema>;
 
-/** Vietnamese mobile numbers: 10 digits starting with 0, or +84 form. */
-export const phoneSchema = z
-  .string()
-  .trim()
-  .regex(/^(0\d{9}|\+84\d{9})$/, "Số điện thoại không hợp lệ.");
+/** Re-exported so existing auth imports keep working from one place. */
+export { phoneSchema };
 
 export const registerSchema = z
   .object({
