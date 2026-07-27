@@ -1,0 +1,134 @@
+/**
+ * Data access for the customer portal.
+ *
+ * Portal reads are scoped by `userId` taken from the session, never by a
+ * customer or vehicle id supplied by the client. A customer may exist in several
+ * garages, so one portal account can map to several `Customer` rows; all of them
+ * are resolved from the account link and then used as the query scope.
+ */
+
+import { prisma, type PrismaClientOrTx } from "@/lib/prisma";
+import type { AppointmentStatus, RepairOrderStatus } from "@/generated/prisma/enums";
+
+/** The garage-side customer records linked to a portal account. */
+export async function listCustomerIdsForUser(
+  userId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<string[]> {
+  const rows = await db.customer.findMany({
+    where: { userId, deletedAt: null },
+    select: { id: true },
+  });
+  return rows.map((row) => row.id);
+}
+
+export interface PortalVehicle {
+  id: string;
+  licensePlate: string;
+  brand: string;
+  model: string;
+  year: number | null;
+  currentKm: number | null;
+}
+
+/**
+ * Vehicles the account currently owns. Ownership that has ended is excluded:
+ * the technical history stays with the vehicle, but a former owner must not keep
+ * reading it from the portal.
+ */
+export async function listPortalVehicles(
+  userId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalVehicle[]> {
+  const customerIds = await listCustomerIdsForUser(userId, db);
+  if (customerIds.length === 0) return [];
+
+  const ownerships = await db.vehicleOwnership.findMany({
+    where: { customerId: { in: customerIds }, isCurrent: true, endedAt: null },
+    select: {
+      vehicle: {
+        select: {
+          id: true,
+          licensePlate: true,
+          brand: true,
+          model: true,
+          year: true,
+          currentKm: true,
+          deletedAt: true,
+        },
+      },
+    },
+    orderBy: { startedAt: "desc" },
+  });
+
+  return ownerships
+    .map((row) => row.vehicle)
+    .filter((vehicle) => vehicle.deletedAt === null)
+    .map(({ deletedAt: _deletedAt, ...vehicle }) => vehicle);
+}
+
+export interface PortalAppointment {
+  id: string;
+  status: AppointmentStatus;
+  scheduledAt: Date;
+  serviceRequest: string | null;
+  garage: { id: string; name: string };
+  vehicle: { id: string; licensePlate: string };
+}
+
+export async function listPortalAppointments(
+  userId: string,
+  options: { take?: number } = {},
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalAppointment[]> {
+  const customerIds = await listCustomerIdsForUser(userId, db);
+  if (customerIds.length === 0) return [];
+
+  return db.appointment.findMany({
+    where: { customerId: { in: customerIds } },
+    select: {
+      id: true,
+      status: true,
+      scheduledAt: true,
+      serviceRequest: true,
+      garage: { select: { id: true, name: true } },
+      vehicle: { select: { id: true, licensePlate: true } },
+    },
+    orderBy: { scheduledAt: "desc" },
+    take: options.take ?? 10,
+  });
+}
+
+export interface PortalRepairOrder {
+  id: string;
+  code: string;
+  status: RepairOrderStatus;
+  receivedAt: Date;
+  deliveredAt: Date | null;
+  garage: { id: string; name: string };
+  vehicle: { id: string; licensePlate: string; brand: string; model: string };
+}
+
+export async function listPortalRepairOrders(
+  userId: string,
+  options: { take?: number } = {},
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalRepairOrder[]> {
+  const customerIds = await listCustomerIdsForUser(userId, db);
+  if (customerIds.length === 0) return [];
+
+  return db.repairOrder.findMany({
+    where: { customerId: { in: customerIds } },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      receivedAt: true,
+      deliveredAt: true,
+      garage: { select: { id: true, name: true } },
+      vehicle: { select: { id: true, licensePlate: true, brand: true, model: true } },
+    },
+    orderBy: { receivedAt: "desc" },
+    take: options.take ?? 10,
+  });
+}
