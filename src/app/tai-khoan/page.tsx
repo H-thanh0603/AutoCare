@@ -105,9 +105,14 @@ export default async function PortalPage() {
       </section>
 
       <section aria-labelledby="portal-appointments-heading" className="space-y-3">
-        <h2 id="portal-appointments-heading" className="text-lg font-semibold">
-          Lịch hẹn
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="portal-appointments-heading" className="text-lg font-semibold">
+            Lịch hẹn
+          </h2>
+          <Link href="/tai-khoan/lich-hen/moi" className="text-sm font-medium underline underline-offset-4">
+            Đặt lịch
+          </Link>
+        </div>
 
         {appointments.length === 0 ? (
           <Card>

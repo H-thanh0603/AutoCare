@@ -159,6 +159,37 @@ export async function markAppointmentNoShow(
   });
 }
 
+export async function cancelGarageAppointment(
+  garageId: string,
+  actorId: string,
+  appointmentId: string,
+  reason: string,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await lockGarageAppointment(tx, garageId, appointmentId);
+    const appointment = await getGarageAppointment(garageId, appointmentId, tx);
+    assertAppointmentTransition(appointment.status, "CANCELLED");
+    await updateAppointmentStatus(
+      appointment.id,
+      "CANCELLED",
+      { cancelledById: actorId, cancelReason: reason },
+      tx,
+    );
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.APPOINTMENT_STATUS_CHANGED,
+        entityType: "Appointment",
+        entityId: appointment.id,
+        garageId,
+        actorUserId: actorId,
+        before: { status: appointment.status },
+        after: { status: "CANCELLED", cancelReason: reason },
+      },
+      tx,
+    );
+  });
+}
+
 export async function cancelCustomerAppointment(
   userId: string,
   appointmentId: string,

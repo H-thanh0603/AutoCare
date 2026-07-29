@@ -44,6 +44,7 @@ yarn-error.log*
 /.claude/
 /.windsurf/
 /skills-lock.json
+/.hermes/
 
 # typescript
 *.tsbuildinfo
