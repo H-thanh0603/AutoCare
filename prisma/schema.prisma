@@ -199,13 +199,13 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships        GarageMember[]
-  customerProfiles   Customer[]
-  notifications      Notification[]
-  auditLogs          AuditLog[]
-  assignedWorkTasks  WorkTask[]     @relation("AssignedTasks")
-  advisedRepairOrders RepairOrder[] @relation("RepairOrderAdvisor")
-  workLogs           WorkLog[]
+  memberships         GarageMember[]
+  customerProfiles    Customer[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  assignedWorkTasks   WorkTask[]     @relation("AssignedTasks")
+  advisedRepairOrders RepairOrder[]  @relation("RepairOrderAdvisor")
+  workLogs            WorkLog[]
 
   @@map("users")
 }
@@ -225,6 +225,7 @@ model Garage {
   customers             Customer[]
   appointments          Appointment[]
   repairOrders          RepairOrder[]
+  repairOrderSequences  RepairOrderSequence[]
   services              Service[]
   parts                 Part[]
   inventoryTransactions InventoryTransaction[]
@@ -360,7 +361,8 @@ model Appointment {
   customerId     String
   vehicleId      String
   status         AppointmentStatus @default(PENDING)
-  scheduledAt    DateTime
+  scheduledAt    DateTime          @db.Timestamptz(3)
+  endsAt         DateTime          @db.Timestamptz(3)
   serviceRequest String?
   note           String?
   createdById    String?
@@ -377,31 +379,33 @@ model Appointment {
 
   @@index([garageId, scheduledAt])
   @@index([garageId, status])
+  @@index([vehicleId, status])
   @@map("appointments")
 }
 
 model RepairOrder {
-  id            String            @id @default(cuid())
-  garageId      String
+  id              String            @id @default(cuid())
+  garageId        String
   /// Human-readable code, unique per garage, e.g. RO-2026-0001.
-  code          String
-  vehicleId     String
-  customerId    String
-  appointmentId String?           @unique
-  status        RepairOrderStatus @default(RECEIVED)
-  receivedAt    DateTime          @default(now())
-  mileageKm     Int?
+  code            String
+  vehicleId       String
+  customerId      String
+  appointmentId   String?           @unique
+  status          RepairOrderStatus @default(RECEIVED)
+  receivedAt      DateTime          @default(now())
+  mileageKm       Int?
   /// Fuel level 0–100 (%).
-  fuelLevel     Int?
-  initialNote   String?
-  advisorId     String?
-  version       Int               @default(1)
-  completedAt   DateTime?
-  deliveredAt   DateTime?
-  cancelledAt   DateTime?
-  cancelReason  String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  fuelLevel       Int?
+  initialNote     String?
+  intakeChecklist Json?
+  advisorId       String?
+  version         Int               @default(1)
+  completedAt     DateTime?
+  deliveredAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   garage      Garage       @relation(fields: [garageId], references: [id])
   vehicle     Vehicle      @relation(fields: [vehicleId], references: [id])
@@ -418,6 +422,18 @@ model RepairOrder {
   @@index([garageId, status])
   @@index([vehicleId])
   @@map("repair_orders")
+}
+
+model RepairOrderSequence {
+  id        String @id @default(cuid())
+  garageId  String
+  year      Int
+  nextValue Int    @default(1)
+
+  garage Garage @relation(fields: [garageId], references: [id])
+
+  @@unique([garageId, year])
+  @@map("repair_order_sequences")
 }
 
 // ---------------------------------------------------------------------------
@@ -839,7 +855,7 @@ model Media {
   kind             MediaKind  @default(IMAGE)
   phase            MediaPhase @default(OTHER)
   /// Storage-provider key (see storage abstraction).
-  storageKey       String
+  storageKey       String     @unique
   mimeType         String
   sizeBytes        Int
   caption          String?

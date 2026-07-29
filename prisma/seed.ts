@@ -90,7 +90,19 @@ async function main(): Promise<void> {
       address: "185 Nguyễn Văn Cừ, Long Biên, Hà Nội",
       phone: "02438725160",
       email: "lienhe@garathanhdat.vn",
-      settings: { allowNegativeStock: false, taxPercent: 8 },
+      settings: {
+        allowNegativeStock: false,
+        taxPercent: 8,
+        appointmentSlotMinutes: 60,
+        workingHours: {
+          1: { open: "08:00", close: "17:00" },
+          2: { open: "08:00", close: "17:00" },
+          3: { open: "08:00", close: "17:00" },
+          4: { open: "08:00", close: "17:00" },
+          5: { open: "08:00", close: "17:00" },
+          6: { open: "08:00", close: "17:00" },
+        },
+      },
     },
   });
 
@@ -101,7 +113,19 @@ async function main(): Promise<void> {
       address: "62 Trường Chinh, Thanh Xuân, Hà Nội",
       phone: "02436281944",
       email: "cskh@minhphatauto.vn",
-      settings: { allowNegativeStock: false, taxPercent: 8 },
+      settings: {
+        allowNegativeStock: false,
+        taxPercent: 8,
+        appointmentSlotMinutes: 60,
+        workingHours: {
+          1: { open: "08:00", close: "17:00" },
+          2: { open: "08:00", close: "17:00" },
+          3: { open: "08:00", close: "17:00" },
+          4: { open: "08:00", close: "17:00" },
+          5: { open: "08:00", close: "17:00" },
+          6: { open: "08:00", close: "17:00" },
+        },
+      },
     },
   });
 
@@ -416,6 +440,7 @@ async function main(): Promise<void> {
       vehicleId: vios.id,
       status: "COMPLETED",
       scheduledAt: daysAgo(3),
+      endsAt: new Date(daysAgo(3).getTime() + 60 * 60 * 1000),
       serviceRequest: "Bảo dưỡng định kỳ, xe có tiếng kêu khi phanh.",
       createdById: hoangUser.id,
       confirmedById: receptionist.id,
@@ -786,6 +811,7 @@ async function main(): Promise<void> {
       vehicleId: cx5.id,
       status: "ARRIVED",
       scheduledAt: daysAgo(1),
+      endsAt: new Date(daysAgo(1).getTime() + 60 * 60 * 1000),
       serviceRequest: "Điều hòa lạnh yếu.",
       createdById: maiUser.id,
       confirmedById: receptionist.id,
@@ -1002,6 +1028,7 @@ async function main(): Promise<void> {
       vehicleId: vios.id,
       status: "PENDING",
       scheduledAt: daysFromNow(5),
+      endsAt: new Date(daysFromNow(5).getTime() + 60 * 60 * 1000),
       serviceRequest: "Kiểm tra tổng quát trước chuyến đi xa.",
       createdById: hoangUser.id,
     },
