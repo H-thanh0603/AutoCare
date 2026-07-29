@@ -3,7 +3,7 @@ import { getGarageAppointment, updateAppointmentStatus } from "@/data/appointmen
 import { createMileageLog, setCurrentKm } from "@/data/vehicles";
 import type { ReceptionInput } from "@/features/repair-orders/schema";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
-import { NotFoundError } from "@/lib/errors";
+import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma, type PrismaTx } from "@/lib/prisma";
 import { assertAppointmentTransition } from "@/lib/transitions";
 import { validateMileageChange } from "@/features/vehicles/mileage";
@@ -169,3 +169,139 @@ export async function createWalkInRepairOrder(
 }
 
 export { nextRepairOrderCode };
+
+export async function passQualityCheck(input: {
+  garageId: string;
+  repairOrderId: string;
+  actorUserId: string;
+  note?: string;
+}) {
+  const { garageId, repairOrderId, actorUserId, note } = input;
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.repairOrder.findFirst({
+      where: { id: repairOrderId, garageId },
+    });
+    if (!order) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
+
+    if (order.status !== "QUALITY_CHECK") {
+      throw new BusinessRuleError("Lệnh sửa chữa phải ở trạng thái kiểm tra chất lượng.");
+    }
+
+    const { assertRepairOrderTransition } = await import("@/lib/transitions");
+    assertRepairOrderTransition(order.status, "READY_FOR_DELIVERY");
+
+    await tx.repairOrder.update({
+      where: { id: order.id },
+      data: { status: "READY_FOR_DELIVERY" },
+    });
+
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.REPAIR_ORDER_STATUS_CHANGED,
+        entityType: "RepairOrder",
+        entityId: order.id,
+        garageId,
+        actorUserId,
+        before: { status: order.status },
+        after: { status: "READY_FOR_DELIVERY", note },
+      },
+      tx,
+    );
+  });
+}
+
+export async function failQualityCheck(input: {
+  garageId: string;
+  repairOrderId: string;
+  actorUserId: string;
+  reason: string;
+}) {
+  const { garageId, repairOrderId, actorUserId, reason } = input;
+  if (!reason.trim()) throw new ValidationError("Lý do nghiệm thu không đạt là bắt buộc.");
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.repairOrder.findFirst({
+      where: { id: repairOrderId, garageId },
+    });
+    if (!order) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
+
+    if (order.status !== "QUALITY_CHECK") {
+      throw new BusinessRuleError("Lệnh sửa chữa phải ở trạng thái kiểm tra chất lượng.");
+    }
+
+    const { assertRepairOrderTransition } = await import("@/lib/transitions");
+    assertRepairOrderTransition(order.status, "IN_PROGRESS");
+
+    await tx.repairOrder.update({
+      where: { id: order.id },
+      data: { status: "IN_PROGRESS" },
+    });
+
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.REPAIR_ORDER_STATUS_CHANGED,
+        entityType: "RepairOrder",
+        entityId: order.id,
+        garageId,
+        actorUserId,
+        before: { status: order.status },
+        after: { status: "IN_PROGRESS", failReason: reason },
+      },
+      tx,
+    );
+  });
+}
+
+export async function deliverVehicle(input: {
+  garageId: string;
+  repairOrderId: string;
+  actorUserId: string;
+}) {
+  const { garageId, repairOrderId, actorUserId } = input;
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.repairOrder.findFirst({
+      where: { id: repairOrderId, garageId },
+      include: { appointment: true },
+    });
+    if (!order) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
+
+    if (order.status !== "READY_FOR_DELIVERY") {
+      throw new BusinessRuleError(
+        "Không thể bàn giao xe khi chưa hoàn tất nghiệm thu (Quy tắc 10). Lệnh sửa chữa phải ở trạng thái 'Sẵn sàng giao xe'.",
+      );
+    }
+
+    const { assertRepairOrderTransition } = await import("@/lib/transitions");
+    assertRepairOrderTransition(order.status, "COMPLETED");
+
+    const now = new Date();
+    await tx.repairOrder.update({
+      where: { id: order.id },
+      data: {
+        status: "COMPLETED",
+        deliveredAt: now,
+        completedAt: order.completedAt ?? now,
+      },
+    });
+
+    if (order.appointmentId) {
+      await updateAppointmentStatus(order.appointmentId, "COMPLETED", {}, tx);
+    }
+
+    const { syncVehicleHealthFromRepairOrder } = await import("@/features/vehicle-health/service");
+    await syncVehicleHealthFromRepairOrder(order.id, tx);
+
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.VEHICLE_DELIVERED,
+        entityType: "RepairOrder",
+        entityId: order.id,
+        garageId,
+        actorUserId,
+        before: { status: order.status },
+        after: { status: "COMPLETED", deliveredAt: now },
+      },
+      tx,
+    );
+  });
+}

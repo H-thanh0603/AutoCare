@@ -75,6 +75,7 @@ afterAll(async () => {
   await prisma.inspectionItem.deleteMany({ where: { inspection: { garageId } } });
   await prisma.inspection.deleteMany({ where: { garageId } });
   await prisma.auditLog.deleteMany({ where: { garageId } });
+  await prisma.workTask.deleteMany({ where: { garageId } });
   await prisma.repairOrder.deleteMany({ where: { garageId } });
   await prisma.vehicleOwnership.deleteMany({ where: { vehicleId } });
   await prisma.vehicle.deleteMany({ where: { id: vehicleId } });

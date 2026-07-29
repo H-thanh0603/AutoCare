@@ -1,4 +1,5 @@
 import type { QuotationItemStatus, QuotationItemType } from "@/generated/prisma/enums";
+import { syncWorkTasksFromQuotation } from "@/features/work-tasks/service";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { BusinessRuleError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { addMoney, calculateLineTotal } from "@/lib/money";
@@ -306,6 +307,10 @@ export async function decideQuotationItem(
       },
       tx,
     );
+
+    if (input.status === "APPROVED") {
+      await syncWorkTasksFromQuotation(item.quotationId, tx);
+    }
   });
 }
 
@@ -372,5 +377,66 @@ export async function decideQuotationItemAsManager(
       },
       tx,
     );
+
+    if (input.status === "APPROVED") {
+      await syncWorkTasksFromQuotation(item.quotationId, tx);
+    }
+  });
+}
+
+export async function createSupplementaryQuotation(
+  garageId: string,
+  actorUserId: string,
+  input: QuotationDraftInput & { parentQuotationId: string; workTaskId?: string },
+) {
+  const items = quotationItems(input);
+  return prisma.$transaction(async (tx) => {
+    const parent = await tx.quotation.findFirst({
+      where: { id: input.parentQuotationId, garageId },
+      select: { id: true, repairOrderId: true, versionNo: true },
+    });
+    if (!parent) throw new NotFoundError("Không tìm thấy báo giá gốc.");
+
+    if (input.workTaskId) {
+      await tx.workTask.update({
+        where: { id: input.workTaskId },
+        data: { status: "WAITING_APPROVAL" },
+      });
+    }
+
+    const latest = await tx.quotation.findFirst({
+      where: { repairOrderId: parent.repairOrderId },
+      select: { versionNo: true },
+      orderBy: { versionNo: "desc" },
+    });
+
+    const quotation = await tx.quotation.create({
+      data: {
+        garageId,
+        repairOrderId: parent.repairOrderId,
+        parentQuotationId: parent.id,
+        isSupplementary: true,
+        versionNo: (latest?.versionNo ?? parent.versionNo) + 1,
+        note: input.note?.trim() || null,
+        validUntil: input.validUntil,
+        totalAmount: addMoney(...items.map((i) => i.totalAmount)),
+        createdById: actorUserId,
+        items: { create: items },
+      },
+    });
+
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.QUOTATION_CREATED,
+        entityType: "Quotation",
+        entityId: quotation.id,
+        garageId,
+        actorUserId,
+        after: { isSupplementary: true, parentQuotationId: parent.id, totalAmount: quotation.totalAmount },
+      },
+      tx,
+    );
+
+    return quotation;
   });
 }
