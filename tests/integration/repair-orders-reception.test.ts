@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createCustomerAppointment, confirmAppointment } from "@/features/appointments/service";
 import { checkInAppointment, createWalkInRepairOrder } from "@/features/repair-orders/service";
+import { getRepairOrderDetail } from "@/data/repair-orders";
 import { BusinessRuleError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 
@@ -109,6 +110,13 @@ describe("repair order reception", () => {
       customerId,
       appointmentId: null,
       status: "RECEIVED",
+    });
+    await expect(getRepairOrderDetail(garageId, result.id)).resolves.toMatchObject({
+      id: result.id,
+      code: result.code,
+      intakeChecklist: {},
+      vehicle: { id: vehicleId },
+      customer: { id: customerId },
     });
   });
 });

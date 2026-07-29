@@ -34,6 +34,36 @@ export type RepairOrderListItem = {
   advisor: { id: string; name: string } | null;
 };
 
+const detailSelect = {
+  id: true,
+  code: true,
+  status: true,
+  receivedAt: true,
+  mileageKm: true,
+  fuelLevel: true,
+  initialNote: true,
+  intakeChecklist: true,
+  appointmentId: true,
+  vehicle: { select: { id: true, licensePlate: true, brand: true, model: true } },
+  customer: { select: { id: true, name: true, phone: true } },
+  advisor: { select: { id: true, name: true } },
+} as const;
+
+export type RepairOrderDetail = {
+  id: string;
+  code: string;
+  status: RepairOrderStatus;
+  receivedAt: Date;
+  mileageKm: number | null;
+  fuelLevel: number | null;
+  initialNote: string | null;
+  intakeChecklist: unknown;
+  appointmentId: string | null;
+  vehicle: { id: string; licensePlate: string; brand: string; model: string };
+  customer: { id: string; name: string; phone: string };
+  advisor: { id: string; name: string } | null;
+};
+
 /** Returns null when the order does not exist *in this garage*. */
 export async function findRepairOrderById(
   garageId: string,
@@ -62,6 +92,19 @@ export async function getRepairOrderById(
   if (!order) {
     throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
   }
+  return order;
+}
+
+export async function getRepairOrderDetail(
+  garageId: string,
+  id: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<RepairOrderDetail> {
+  const order = await db.repairOrder.findFirst({
+    where: { id, garageId },
+    select: detailSelect,
+  });
+  if (!order) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
   return order;
 }
 
