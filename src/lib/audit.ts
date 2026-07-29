@@ -35,6 +35,8 @@ export const AUDIT_ACTIONS = {
   REPAIR_ORDER_WALK_IN: "repair_order.walk_in",
   REPAIR_ORDER_STATUS_CHANGED: "repair_order.status_changed",
   VEHICLE_DELIVERED: "repair_order.delivered",
+  INSPECTION_STARTED: "inspection.started",
+  INSPECTION_UPDATED: "inspection.updated",
   MEDIA_UPLOADED: "media.uploaded",
 } as const;
 
