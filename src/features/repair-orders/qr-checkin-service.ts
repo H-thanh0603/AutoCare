@@ -9,7 +9,7 @@ export async function lookupVehicleByQrCode(garageId: string, qrData: string) {
     throw new ValidationError("Mã QR không đúng định dạng AutoCare.");
   }
 
-  // 1. Search vehicle by ID or License Plate
+  // 1. Search vehicle by ID or License Plate or VIN
   const vehicle = await prisma.vehicle.findFirst({
     where: {
       OR: [
@@ -67,9 +67,13 @@ export async function instantCheckinByQrCode(input: {
   const { garageId, qrData, mileageKm, customerNotes, actorUserId } = input;
   const vehicleInfo = await lookupVehicleByQrCode(garageId, qrData);
 
-  const finalMileage = mileageKm ?? vehicleInfo.currentKm ?? 0;
+  // Mileage handling: ensure nextKm >= previousKm to pass mileage validation rules
+  const currentKm = vehicleInfo.currentKm ?? 0;
+  const inputMileage = mileageKm && mileageKm > 0 ? mileageKm : currentKm;
+  const finalMileage = Math.max(inputMileage, currentKm);
+  const overrideReason = inputMileage < currentKm ? "Tiếp nhận 1-Touch bằng QR Code" : null;
 
-  // 2. Ensure Vehicle Ownership exists in current garageId for seamless check-in
+  // Ensure Vehicle Ownership exists in current garageId for seamless check-in
   await prisma.$transaction(async (tx) => {
     const existingOwnership = await tx.vehicleOwnership.findFirst({
       where: {
@@ -81,18 +85,27 @@ export async function instantCheckinByQrCode(input: {
     });
 
     if (!existingOwnership) {
-      // Find or create a Customer in current garage for this vehicle
+      const ownerPhone = vehicleInfo.owner?.phone?.trim() || `09${Math.floor(10000000 + Math.random() * 90000000)}`;
+
+      // Check if a customer with this phone already exists in garageId
       let customer = await tx.customer.findFirst({
-        where: { garageId, deletedAt: null },
-        orderBy: { createdAt: "asc" },
+        where: { garageId, phone: ownerPhone, deletedAt: null },
       });
+
+      if (!customer) {
+        // Fallback: pick any active customer in garageId or create a new unique one
+        customer = await tx.customer.findFirst({
+          where: { garageId, deletedAt: null },
+          orderBy: { createdAt: "asc" },
+        });
+      }
 
       if (!customer) {
         customer = await tx.customer.create({
           data: {
             garageId,
             name: vehicleInfo.owner?.name ?? "Khách Vãng Lai (QR Checkin)",
-            phone: vehicleInfo.owner?.phone ?? "0900000000",
+            phone: ownerPhone,
             email: vehicleInfo.owner?.email ?? null,
             note: "Khách tiếp nhận bằng QR Code 1-Touch.",
           },
@@ -117,14 +130,14 @@ export async function instantCheckinByQrCode(input: {
     }
   });
 
-  // 3. Create Walk-in Repair Order
+  // Create Walk-in Repair Order
   const order = await createWalkInRepairOrder(garageId, actorUserId, true, {
     vehicleId: vehicleInfo.vehicleId,
     mileageKm: finalMileage,
     fuelLevel: null,
     initialNote: customerNotes ?? "Tiếp nhận 1-Touch bằng quét mã QR Code.",
     intakeChecklist: {},
-    overrideReason: null,
+    overrideReason,
   });
 
   return {
