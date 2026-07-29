@@ -25,8 +25,12 @@ import type { SessionUser } from "./rbac";
  * one; garage switching is out of scope for the MVP.
  */
 async function loadAuthUser(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
   return prisma.user.findFirst({
-    where: { email, isActive: true },
+    where: {
+      email: { equals: normalizedEmail, mode: "insensitive" },
+      isActive: true,
+    },
     select: {
       id: true,
       email: true,

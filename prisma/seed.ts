@@ -224,6 +224,16 @@ async function main(): Promise<void> {
     },
   });
 
+  const khach1User = await prisma.user.create({
+    data: {
+      email: "khach1@gmail.com",
+      name: "Khách Hàng Demo",
+      phone: "0909999888",
+      passwordHash,
+      role: "CUSTOMER",
+    },
+  });
+
   const maiUser = await prisma.user.create({
     data: {
       email: "mai.tran@example.com",
@@ -254,6 +264,17 @@ async function main(): Promise<void> {
       phone: "0903333444",
       email: "mai.tran@example.com",
       address: "88 Nguyễn Trãi, Thanh Xuân, Hà Nội",
+    },
+  });
+
+  const khach1 = await prisma.customer.create({
+    data: {
+      garageId: garage.id,
+      userId: khach1User.id,
+      name: "Khách Hàng Demo",
+      phone: "0909999888",
+      email: "khach1@gmail.com",
+      address: "100 Phố Huế, Hai Bà Trưng, Hà Nội",
     },
   });
 
