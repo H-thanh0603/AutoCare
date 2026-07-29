@@ -1,95 +1,118 @@
-/**
- * Fixed-window rate limiting for login and other sensitive endpoints.
- *
- * Deliberately in-process: the MVP runs as a single Node instance, so a Map is
- * enough and adds no infrastructure. It does NOT survive a restart and does NOT
- * coordinate across instances — when AutoCare is scaled horizontally this must
- * be swapped for Redis (see docs/DECISIONS.md).
- */
+import { TooManyRequestsError } from "./errors";
 
-interface Window {
-  count: number;
-  resetAt: number;
+interface RateLimitRecord {
+  timestamps: number[];
 }
 
-const windows = new Map<string, Window>();
+const store = new Map<string, RateLimitRecord>();
 
-/** Clears expired windows so the Map cannot grow without bound. */
-function sweep(now: number): void {
-  for (const [key, window] of windows) {
-    if (window.resetAt <= now) {
-      windows.delete(key);
+export const RATE_LIMITS = {
+  LOGIN: { limit: 5, windowMs: 15 * 60 * 1000 },
+  REGISTER: { limit: 3, windowMs: 60 * 60 * 1000 },
+  MEDIA_UPLOAD: { limit: 20, windowMs: 60 * 1000 },
+  PUBLIC_SHARE: { limit: 30, windowMs: 60 * 1000 },
+} as const;
+
+// Cleanup stale rate limit entries every 5 minutes
+if (typeof setInterval !== "undefined") {
+  const cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of store.entries()) {
+      record.timestamps = record.timestamps.filter((t) => now - t < 3_600_000);
+      if (record.timestamps.length === 0) {
+        store.delete(key);
+      }
     }
+  }, 5 * 60 * 1000);
+
+  if (cleanupTimer && typeof cleanupTimer === "object" && "unref" in cleanupTimer) {
+    (cleanupTimer as { unref: () => void }).unref();
   }
-}
-
-let lastSweep = 0;
-const SWEEP_INTERVAL_MS = 60_000;
-
-export interface RateLimitResult {
-  ok: boolean;
-  remaining: number;
-  /** Seconds until the caller may retry; 0 when not limited. */
-  retryAfterSeconds: number;
 }
 
 export interface RateLimitOptions {
-  /** Identifier being limited, e.g. `login:user@example.com`. */
-  key: string;
-  limit: number;
+  /** Unique key combining IP address, user ID, or endpoint name */
+  key?: string;
+  identifier?: string;
+  /** Maximum number of allowed requests within the time window */
+  limit?: number;
+  maxRequests?: number;
+  /** Time window in milliseconds */
   windowMs: number;
 }
 
-export function checkRateLimit({
-  key,
-  limit,
-  windowMs,
-}: RateLimitOptions): RateLimitResult {
+export interface RateLimitResult {
+  ok: boolean;
+  allowed: boolean;
+  remaining: number;
+  resetMs: number;
+  retryAfterSeconds: number;
+}
+
+export function checkRateLimit(options: RateLimitOptions): RateLimitResult {
+  const identifier = options.key ?? options.identifier ?? "global";
+  const maxRequests = options.limit ?? options.maxRequests ?? 10;
+  const { windowMs } = options;
+
   const now = Date.now();
+  const windowStart = now - windowMs;
 
-  if (now - lastSweep > SWEEP_INTERVAL_MS) {
-    sweep(now);
-    lastSweep = now;
+  let record = store.get(identifier);
+  if (!record) {
+    record = { timestamps: [] };
+    store.set(identifier, record);
   }
 
-  const existing = windows.get(key);
-  if (!existing || existing.resetAt <= now) {
-    windows.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, remaining: limit - 1, retryAfterSeconds: 0 };
-  }
+  // Filter timestamps within current window
+  record.timestamps = record.timestamps.filter((t) => t > windowStart);
 
-  if (existing.count >= limit) {
+  if (record.timestamps.length >= maxRequests) {
+    const oldestTimestamp = record.timestamps[0];
+    const resetMs = Math.max(0, oldestTimestamp + windowMs - now);
+    const retryAfterSeconds = Math.ceil(resetMs / 1000);
     return {
       ok: false,
+      allowed: false,
       remaining: 0,
-      retryAfterSeconds: Math.ceil((existing.resetAt - now) / 1000),
+      resetMs,
+      retryAfterSeconds,
     };
   }
 
-  existing.count += 1;
+  record.timestamps.push(now);
+  const remaining = maxRequests - record.timestamps.length;
+  const retryAfterSeconds = Math.ceil(windowMs / 1000);
+
   return {
     ok: true,
-    remaining: limit - existing.count,
-    retryAfterSeconds: 0,
+    allowed: true,
+    remaining,
+    resetMs: windowMs,
+    retryAfterSeconds,
   };
 }
 
-/** Drops a counter, e.g. after a successful login. */
 export function resetRateLimit(key: string): void {
-  windows.delete(key);
+  store.delete(key);
 }
 
-/** Test hook — never call from application code. */
-export function clearAllRateLimits(): void {
-  windows.clear();
-  lastSweep = 0;
+export function assertRateLimit(options: RateLimitOptions): void {
+  const result = checkRateLimit(options);
+  if (!result.allowed) {
+    const seconds = result.retryAfterSeconds;
+    throw new TooManyRequestsError(
+      `Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${seconds} giây.`,
+    );
+  }
 }
 
-export const RATE_LIMITS = {
-  /** 5 attempts per 10 minutes per email+IP pair. */
-  LOGIN: { limit: 5, windowMs: 10 * 60_000 },
-  /** 3 registrations per hour per IP. */
-  REGISTER: { limit: 3, windowMs: 60 * 60_000 },
-  /** 30 share-link lookups per 10 minutes per IP, to blunt token guessing. */
-  SHARE_LINK: { limit: 30, windowMs: 10 * 60_000 },
-} as const;
+export function getClientIp(request: Request): string {
+  const xForwardedFor = request.headers.get("x-forwarded-for");
+  if (xForwardedFor) {
+    const firstIp = xForwardedFor.split(",")[0].trim();
+    if (firstIp) return firstIp;
+  }
+  const xRealIp = request.headers.get("x-real-ip");
+  if (xRealIp) return xRealIp.trim();
+  return "127.0.0.1";
+}

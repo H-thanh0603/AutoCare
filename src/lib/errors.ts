@@ -12,6 +12,8 @@ export type ErrorCode =
   | "NOT_FOUND"
   | "CONFLICT"
   | "BUSINESS_RULE_VIOLATION"
+  | "TOO_MANY_REQUESTS"
+  | "PAYLOAD_TOO_LARGE"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {
@@ -30,6 +32,18 @@ export class AppError extends Error {
     this.code = code;
     this.httpStatus = httpStatus;
     this.details = details;
+  }
+}
+
+export class TooManyRequestsError extends AppError {
+  constructor(message = "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.") {
+    super("TOO_MANY_REQUESTS", message, 429);
+  }
+}
+
+export class PayloadTooLargeError extends AppError {
+  constructor(message = "Dung lượng dữ liệu vượt quá giới hạn cho phép.") {
+    super("PAYLOAD_TOO_LARGE", message, 413);
   }
 }
 
