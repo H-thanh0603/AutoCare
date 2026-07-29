@@ -1,11 +1,13 @@
-import type { QuotationItemType } from "@/generated/prisma/enums";
+import type { QuotationItemStatus, QuotationItemType } from "@/generated/prisma/enums";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
-import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
+import { BusinessRuleError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { addMoney, calculateLineTotal } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import {
   assertQuotationTransition,
+  assertQuotationItemTransition,
   assertRepairOrderTransition,
+  deriveQuotationStatus,
   isQuotationEditable,
 } from "@/lib/transitions";
 
@@ -172,6 +174,135 @@ export async function sendQuotation(
         actorUserId,
         before: { status: quotation.status },
         after: { status: "SENT", sentAt },
+      },
+      tx,
+    );
+  });
+}
+
+export async function createQuotationRevision(
+  garageId: string,
+  actorUserId: string,
+  input: Omit<QuotationDraftInput, "id" | "repairOrderId"> & {
+    quotationId: string;
+    version: number;
+  },
+) {
+  const items = quotationItems({ ...input, repairOrderId: "" });
+  if (input.validUntil && input.validUntil <= new Date()) {
+    throw new ValidationError("Hạn báo giá phải ở trong tương lai.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.quotation.findFirst({
+      where: { id: input.quotationId, garageId },
+      select: { id: true, repairOrderId: true, versionNo: true, version: true, status: true },
+    });
+    if (!original) throw new NotFoundError("Không tìm thấy báo giá.");
+    assertQuotationTransition(original.status, "SUPERSEDED");
+
+    const revision = await tx.quotation.create({
+      data: {
+        garageId,
+        repairOrderId: original.repairOrderId,
+        versionNo: original.versionNo + 1,
+        note: input.note?.trim() || null,
+        validUntil: input.validUntil,
+        totalAmount: addMoney(...items.map((item) => item.totalAmount)),
+        createdById: actorUserId,
+        items: { create: items },
+      },
+    });
+    const updated = await tx.quotation.updateMany({
+      where: { id: original.id, version: input.version, status: original.status },
+      data: {
+        status: "SUPERSEDED",
+        supersededById: revision.id,
+        version: { increment: 1 },
+      },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictError("Báo giá vừa được thay đổi. Hãy tải lại trang.");
+    }
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.QUOTATION_REVISED,
+        entityType: "Quotation",
+        entityId: original.id,
+        garageId,
+        actorUserId,
+        before: { status: original.status, versionNo: original.versionNo },
+        after: { status: "SUPERSEDED", supersededById: revision.id },
+      },
+      tx,
+    );
+    return revision;
+  });
+}
+
+export async function decideQuotationItem(
+  userId: string,
+  quotationItemId: string,
+  input: { status: QuotationItemStatus; customerNote: string | null },
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const item = await tx.quotationItem.findFirst({
+      where: {
+        id: quotationItemId,
+        quotation: {
+          status: { in: ["SENT", "PARTIALLY_APPROVED"] },
+          repairOrder: {
+            customer: { userId },
+            vehicle: {
+              ownerships: {
+                some: { isCurrent: true, endedAt: null, customer: { userId } },
+              },
+            },
+          },
+        },
+      },
+      include: {
+        quotation: { include: { items: { select: { id: true, status: true } } } },
+      },
+    });
+    if (!item) throw new NotFoundError("Không tìm thấy hạng mục báo giá.");
+
+    assertQuotationItemTransition(item.status, input.status);
+    const decidedAt = new Date();
+    await tx.quotationItem.update({
+      where: { id: item.id },
+      data: {
+        status: input.status,
+        customerNote: input.customerNote?.trim() || null,
+        decidedAt,
+      },
+    });
+
+    const statuses = item.quotation.items.map((quotationItem) =>
+      quotationItem.id === item.id ? input.status : quotationItem.status,
+    );
+    const quotationStatus = deriveQuotationStatus(statuses, item.quotation.status);
+    if (quotationStatus !== item.quotation.status) {
+      assertQuotationTransition(item.quotation.status, quotationStatus);
+      await tx.quotation.update({
+        where: { id: item.quotation.id },
+        data: {
+          status: quotationStatus,
+          ...(quotationStatus === "APPROVED" || quotationStatus === "REJECTED"
+            ? { decidedAt }
+            : {}),
+        },
+      });
+    }
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.QUOTATION_ITEM_DECIDED,
+        entityType: "QuotationItem",
+        entityId: item.id,
+        garageId: item.quotation.garageId,
+        actorUserId: userId,
+        before: { status: item.status },
+        after: { status: input.status, quotationStatus },
       },
       tx,
     );

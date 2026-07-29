@@ -174,4 +174,63 @@ describe("inspection and quotation invariants", () => {
       saveQuotationDraft(garageId, actorUserId, { ...input, id: quotation.id }),
     ).rejects.toBeInstanceOf(BusinessRuleError);
   });
+
+  it("lets only the current vehicle owner approve a quotation item", async () => {
+    const { decideQuotationItem } = await import("@/features/quotations/service");
+    const quotation = await prisma.quotation.findFirstOrThrow({
+      where: { repairOrderId, status: "SENT" },
+      include: { items: true },
+    });
+    const item = quotation.items[0];
+
+    await expect(
+      decideQuotationItem("not-the-owner", item.id, { status: "APPROVED", customerNote: null }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+
+    await decideQuotationItem(customerUserId, item.id, {
+      status: "APPROVED",
+      customerNote: "Đồng ý thay thế.",
+    });
+
+    await expect(prisma.quotation.findUniqueOrThrow({ where: { id: quotation.id } })).resolves.toMatchObject({
+      status: "APPROVED",
+    });
+    await expect(prisma.quotationItem.findUniqueOrThrow({ where: { id: item.id } })).resolves.toMatchObject({
+      status: "APPROVED",
+      customerNote: "Đồng ý thay thế.",
+    });
+    await expect(
+      prisma.auditLog.findFirst({ where: { garageId, entityId: item.id, action: "quotation.item_decided" } }),
+    ).resolves.not.toBeNull();
+  });
+
+  it("replaces a sent quotation with an immutable revision", async () => {
+    const { createQuotationRevision } = await import("@/features/quotations/service");
+    const original = await prisma.quotation.findFirstOrThrow({
+      where: { repairOrderId, status: "APPROVED" },
+    });
+
+    const revision = await createQuotationRevision(garageId, actorUserId, {
+      quotationId: original.id,
+      version: original.version,
+      note: "Điều chỉnh sau khi tư vấn.",
+      validUntil: new Date(Date.now() + 48 * 60 * 60_000),
+      items: [
+        {
+          type: "OTHER",
+          description: "Thay má phanh trước loại tiêu chuẩn",
+          quantity: 1,
+          unitPrice: 500_000,
+          discountAmount: 0,
+        },
+      ],
+    });
+
+    await expect(prisma.quotation.findUniqueOrThrow({ where: { id: original.id } })).resolves.toMatchObject({
+      status: "SUPERSEDED",
+      supersededById: revision.id,
+      version: original.version + 1,
+    });
+    expect(revision).toMatchObject({ versionNo: 2, status: "DRAFT", totalAmount: 500_000 });
+  });
 });
