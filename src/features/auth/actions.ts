@@ -11,11 +11,12 @@
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
 
+import { findUserByEmail } from "@/data/users";
+import { UserRole } from "@/generated/prisma/enums";
 import { credentialsSchema, registerSchema } from "@/lib/auth-schema";
-import { getSessionUser, signIn, signOut } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
 import { RATE_LIMITS, checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
-import { isStaff } from "@/lib/rbac";
 
 import { registerCustomer } from "./service";
 
@@ -62,6 +63,10 @@ export async function loginAction(
     }
 
     const { email, password } = parsed.data;
+    // Auth.js writes the session cookie to this response. `auth()` cannot read
+    // that new cookie until the next request, so read the role before sign-in
+    // for the server-decided destination.
+    const account = await findUserByEmail(email);
     const rateKey = `login:${email}:${await clientIp()}`;
     const limit = checkRateLimit({ key: rateKey, ...RATE_LIMITS.LOGIN });
 
@@ -85,14 +90,13 @@ export async function loginAction(
 
     resetRateLimit(rateKey);
 
-    // Destination comes from the freshly issued session, never from the form,
-    // so a client cannot steer itself into the dashboard.
-    const user = await getSessionUser();
-    if (!user) {
-      throw new ValidationError(INVALID_CREDENTIALS);
-    }
-
-    return { redirectTo: isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan" };
+    // Destination comes from the account role, never from the form. The client
+    // cannot steer itself into the dashboard, and this action need not read the
+    // cookie that Auth.js has only just attached to its response.
+    return {
+      redirectTo:
+        account?.role === UserRole.CUSTOMER ? "/tai-khoan" : "/bang-dieu-khien",
+    };
   });
 }
 

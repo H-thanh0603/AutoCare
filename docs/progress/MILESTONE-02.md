@@ -158,7 +158,7 @@ Zod, chạy cả client (UX) và server (thẩm quyền):
 - `pnpm test:integration`: đạt, 2 file / 12 tests.
 - `pnpm build`: đạt, 20 routes.
 - Code review + accessibility review: không còn lỗi CRITICAL/HIGH đã xác nhận.
-- E2E Playwright: chưa chạy vì project chưa cài Playwright.
+- E2E Playwright: đạt, 4 smoke flows Chromium (login manager/lễ tân, tìm chi tiết khách và xe); lặp 3 lần, 12 lượt đạt.
 
 ## 13. Báo cáo hoàn thành
 
@@ -169,4 +169,4 @@ Zod, chạy cả client (UX) và server (thẩm quyền):
 - Chủ cũ thuộc garage khác được ẩn PII trong lịch sử ownership.
 - Đã thêm integration coverage cho scope xe, ownership transfer, audit override km
   và phone trùng khác garage.
-- Không có E2E vì Playwright chưa được cài; cần bổ sung trước release production.
+- E2E hiện chỉ là smoke read-only dựa trên dữ liệu seed local; luồng mutation cần DB E2E cô lập, còn vòng đời 16 bước chờ các UI Mốc 3–9.

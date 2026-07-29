@@ -67,6 +67,15 @@ Kịch bản này nên được chia thành các test nhỏ có thể chạy đ�
 3 chỉ cần bước 1-5 hoạt động), nhưng phải có **một bản E2E đầy đủ 16 bước** trước khi coi MVP hoàn
 thành (Milestone 9).
 
+### Smoke E2E hiện có
+
+`pnpm test:e2e` chạy Chromium với dữ liệu seed, chỉ đọc: login theo vai trò, tìm khách hàng/xe và
+mở chi tiết lịch sử xe. Không gọi seed/reset hay mutation; DB local phải đã chạy và có dữ liệu demo.
+
+Ba biến môi trường local (không commit) cần có: `E2E_MANAGER_EMAIL`,
+`E2E_RECEPTIONIST_EMAIL`, `E2E_STAFF_PASSWORD`. Artifacts lỗi nằm trong
+`playwright-report/` và `test-results/` (đã gitignore).
+
 ## 5. Coverage & CI kỳ vọng
 
 - Không đặt ngưỡng coverage cứng ngoài yêu cầu của `prompt.md` (ưu tiên đúng đắn nghiệp vụ hơn %
