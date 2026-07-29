@@ -52,7 +52,7 @@
 - Produces a unique `Inspection.repairOrderId`.
 - Produces `Quotation.parentQuotationId`, `parentQuotation`, and `supplementaryQuotations`.
 
-- [ ] **Step 1: Write failing integration checks for the database invariants**
+- [x] **Step 1: Write failing integration checks for the database invariants**
 
 ```ts
 await prisma.inspection.create({ data: { garageId, repairOrderId } });
@@ -61,12 +61,12 @@ await expect(prisma.inspection.create({ data: { garageId, repairOrderId } }))
 expect(() => assertQuotationItemTransition("APPROVED", "REJECTED")).toThrow(BusinessRuleError);
 ```
 
-- [ ] **Step 2: Run the focused integration test**
+- [x] **Step 2: Run the focused integration test**
 
 Run: `pnpm test:integration -- tests/integration/inspection-quotation.test.ts`
 Expected: FAIL because duplicate inspection is currently accepted.
 
-- [ ] **Step 3: Make approved and rejected quotation items terminal**
+- [x] **Step 3: Make approved and rejected quotation items terminal**
 
 ```ts
 export const QUOTATION_ITEM_TRANSITIONS: TransitionMap<QuotationItemStatus> = {
@@ -81,7 +81,7 @@ Update the current unit test that permits changing a decision so it asserts the
 business-rule error. This matches the already-approved workflow: corrections
 after a decision use a quotation revision.
 
-- [ ] **Step 4: Add only the required schema relations and unique index**
+- [x] **Step 4: Add only the required schema relations and unique index**
 
 ```prisma
 model Inspection {
@@ -96,17 +96,17 @@ model Quotation {
 }
 ```
 
-- [ ] **Step 5: Create and apply the Prisma migration, then regenerate the client**
+- [x] **Step 5: Create and apply the Prisma migration, then regenerate the client**
 
 Run: `pnpm db:migrate -- --name milestone_4_inspection_quotation && pnpm db:generate`
 Expected: migration adds the unique inspection index and nullable supplementary relation without data loss.
 
-- [ ] **Step 6: Re-run focused unit and integration tests**
+- [x] **Step 6: Re-run focused unit and integration tests**
 
 Run: `pnpm test -- tests/unit/transitions.test.ts && pnpm test:integration -- tests/integration/inspection-quotation.test.ts`
 Expected: PASS for terminal decisions and the uniqueness assertion.
 
-- [ ] **Step 7: Commit the invariant**
+- [x] **Step 7: Commit the invariant**
 
 ```bash
 git add prisma/schema.prisma prisma/migrations src/lib/transitions.ts tests/unit/transitions.test.ts tests/integration/inspection-quotation.test.ts

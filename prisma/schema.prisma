@@ -443,7 +443,7 @@ model RepairOrderSequence {
 model Inspection {
   id            String    @id @default(cuid())
   garageId      String
-  repairOrderId String
+  repairOrderId String    @unique
   inspectorId   String?
   summary       String?
   startedAt     DateTime  @default(now())
@@ -455,7 +455,6 @@ model Inspection {
   items       InspectionItem[]
 
   @@index([garageId])
-  @@index([repairOrderId])
   @@map("inspections")
 }
 
@@ -490,6 +489,7 @@ model Quotation {
   versionNo       Int             @default(1)
   status          QuotationStatus @default(DRAFT)
   isSupplementary Boolean         @default(false)
+  parentQuotationId String?
   note            String?
   validUntil      DateTime?
   sentAt          DateTime?
@@ -505,10 +505,13 @@ model Quotation {
   repairOrder  RepairOrder     @relation(fields: [repairOrderId], references: [id])
   supersededBy Quotation?      @relation("QuotationSupersession", fields: [supersededById], references: [id])
   supersedes   Quotation?      @relation("QuotationSupersession")
+  parentQuotation Quotation?   @relation("SupplementaryQuotation", fields: [parentQuotationId], references: [id])
+  supplementaryQuotations Quotation[] @relation("SupplementaryQuotation")
   items        QuotationItem[]
 
   @@unique([repairOrderId, versionNo])
   @@index([garageId, status])
+  @@index([parentQuotationId])
   @@map("quotations")
 }
 

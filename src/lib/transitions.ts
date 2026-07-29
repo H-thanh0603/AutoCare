@@ -166,8 +166,8 @@ export function isQuotationEditable(status: QuotationStatus): boolean {
 export const QUOTATION_ITEM_TRANSITIONS: TransitionMap<QuotationItemStatus> = {
   PENDING: ["APPROVED", "REJECTED", "NEEDS_CLARIFICATION"],
   NEEDS_CLARIFICATION: ["APPROVED", "REJECTED", "PENDING"],
-  APPROVED: ["REJECTED"],
-  REJECTED: ["APPROVED"],
+  APPROVED: [],
+  REJECTED: [],
 };
 
 export const QUOTATION_ITEM_LABELS: Record<QuotationItemStatus, string> = {

@@ -141,9 +141,13 @@ describe("quotation item decisions", () => {
     ).not.toThrow();
   });
 
-  it("allows a customer to change their mind before work starts", () => {
-    expect(() => assertQuotationItemTransition("REJECTED", "APPROVED")).not.toThrow();
-    expect(() => assertQuotationItemTransition("APPROVED", "REJECTED")).not.toThrow();
+  it("keeps approved and rejected items terminal", () => {
+    expect(() => assertQuotationItemTransition("REJECTED", "APPROVED")).toThrow(
+      BusinessRuleError,
+    );
+    expect(() => assertQuotationItemTransition("APPROVED", "REJECTED")).toThrow(
+      BusinessRuleError,
+    );
   });
 
   it("does not allow an approved item to fall back to PENDING", () => {
