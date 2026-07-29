@@ -19,12 +19,18 @@ import { assertAppointmentTransition } from "@/lib/transitions";
 const RESCHEDULE_CANCEL_REASON = "Đổi lịch hẹn";
 
 function isExclusionViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: unknown }).code === "23P01"
-  );
+  const seen = new Set<object>();
+
+  function containsPostgresCode(value: unknown): boolean {
+    if (typeof value !== "object" || value === null || seen.has(value)) return false;
+    seen.add(value);
+
+    if ("code" in value && value.code === "23P01") return true;
+    if ("originalCode" in value && value.originalCode === "23P01") return true;
+    return Object.values(value).some(containsPostgresCode);
+  }
+
+  return containsPostgresCode(error);
 }
 
 async function getGarageAppointmentSettings(

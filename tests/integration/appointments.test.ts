@@ -77,13 +77,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (!garageId || !otherGarageId) return;
+
   await prisma.auditLog.deleteMany({ where: { garageId: { in: [garageId, otherGarageId] } } });
   await prisma.appointment.deleteMany({ where: { garageId: { in: [garageId, otherGarageId] } } });
-  await prisma.vehicleOwnership.deleteMany({ where: { vehicleId } });
-  await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
-  await prisma.customer.deleteMany({ where: { id: customerId } });
+  if (vehicleId) await prisma.vehicleOwnership.deleteMany({ where: { vehicleId } });
+  if (vehicleId) await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
+  if (customerId) await prisma.customer.deleteMany({ where: { id: customerId } });
   await prisma.garage.deleteMany({ where: { id: { in: [garageId, otherGarageId] } } });
-  await prisma.user.deleteMany({ where: { id: { in: [userId, otherUserId, actorUserId] } } });
+  const userIds = [userId, otherUserId, actorUserId].filter((id): id is string => Boolean(id));
+  if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
 });
 
 describe("appointment services", () => {
