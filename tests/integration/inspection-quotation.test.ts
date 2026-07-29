@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { NotFoundError } from "@/lib/errors";
+import { BusinessRuleError, NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 
 const PREFIX = `test-inspection-quotation-${Date.now()}`;
@@ -69,8 +69,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!garageId) return;
+  await prisma.notification.deleteMany({ where: { userId: customerUserId } });
+  await prisma.quotationItem.deleteMany({ where: { quotation: { garageId } } });
+  await prisma.quotation.deleteMany({ where: { garageId } });
   await prisma.inspectionItem.deleteMany({ where: { inspection: { garageId } } });
   await prisma.inspection.deleteMany({ where: { garageId } });
+  await prisma.auditLog.deleteMany({ where: { garageId } });
   await prisma.repairOrder.deleteMany({ where: { garageId } });
   await prisma.vehicleOwnership.deleteMany({ where: { vehicleId } });
   await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
@@ -127,5 +131,47 @@ describe("inspection and quotation invariants", () => {
     await expect(
       prisma.auditLog.findFirst({ where: { garageId, entityId: inspection.id, action: "inspection.updated" } }),
     ).resolves.not.toBeNull();
+  });
+
+  it("calculates a draft quotation and sends it to the customer", async () => {
+    const { saveQuotationDraft, sendQuotation } = await import(
+      "@/features/quotations/service"
+    );
+    const input = {
+      repairOrderId,
+      note: "Báo giá xử lý phanh.",
+      validUntil: new Date(Date.now() + 24 * 60 * 60_000),
+      items: [
+        {
+          type: "OTHER" as const,
+          description: "Thay má phanh trước",
+          quantity: 2,
+          unitPrice: 350_000,
+          discountAmount: 100_000,
+        },
+      ],
+    };
+
+    const quotation = await saveQuotationDraft(garageId, actorUserId, input);
+    expect(quotation).toMatchObject({ versionNo: 1, status: "DRAFT", totalAmount: 600_000 });
+
+    await sendQuotation(garageId, actorUserId, quotation.id);
+
+    await expect(
+      prisma.quotation.findUniqueOrThrow({ where: { id: quotation.id }, include: { items: true } }),
+    ).resolves.toMatchObject({
+      status: "SENT",
+      totalAmount: 600_000,
+      items: [expect.objectContaining({ totalAmount: 600_000, status: "PENDING" })],
+    });
+    await expect(prisma.repairOrder.findUniqueOrThrow({ where: { id: repairOrderId } })).resolves.toMatchObject({
+      status: "WAITING_CUSTOMER_APPROVAL",
+    });
+    await expect(
+      prisma.notification.findFirst({ where: { userId: customerUserId, type: "QUOTATION" } }),
+    ).resolves.toMatchObject({ data: { href: `/tai-khoan/bao-gia/${quotation.id}` } });
+    await expect(
+      saveQuotationDraft(garageId, actorUserId, { ...input, id: quotation.id }),
+    ).rejects.toBeInstanceOf(BusinessRuleError);
   });
 });
