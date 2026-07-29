@@ -152,6 +152,19 @@ export default async function PortalPage() {
                     {vehicle.currentKm === null ? "Chưa ghi nhận" : `${KM_FORMATTER.format(vehicle.currentKm)} km`}
                   </span>
                 </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    render={<Link href={`/tai-khoan/xe/${vehicle.id}`} />}
+                    className="border-blue-200 bg-blue-50/50 hover:bg-blue-600 hover:text-white text-blue-700 font-extrabold text-xs rounded-xl h-9 px-4 transition-all"
+                  >
+                    <ShieldCheck className="size-4 mr-1.5" />
+                    <span>Xem Sổ Sức Khỏe Xe</span>
+                    <ChevronRight className="size-3.5 ml-1" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
