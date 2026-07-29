@@ -7,6 +7,7 @@
  * are resolved from the account link and then used as the query scope.
  */
 
+import { NotFoundError } from "@/lib/errors";
 import { prisma, type PrismaClientOrTx } from "@/lib/prisma";
 import type { AppointmentStatus, RepairOrderStatus } from "@/generated/prisma/enums";
 
@@ -20,6 +21,34 @@ export async function listCustomerIdsForUser(
     select: { id: true },
   });
   return rows.map((row) => row.id);
+}
+
+export interface PortalVehicleOwner {
+  garageId: string;
+  customerId: string;
+}
+
+/**
+ * Current owner lookup for portal writes. The user and ownership predicates are
+ * in one query, so a former owner or a vehicle from another account is missing.
+ */
+export async function getCurrentPortalVehicleOwner(
+  userId: string,
+  vehicleId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalVehicleOwner> {
+  const ownership = await db.vehicleOwnership.findFirst({
+    where: {
+      vehicleId,
+      isCurrent: true,
+      endedAt: null,
+      vehicle: { deletedAt: null },
+      customer: { userId, deletedAt: null },
+    },
+    select: { customerId: true, customer: { select: { garageId: true } } },
+  });
+  if (!ownership) throw new NotFoundError("Không tìm thấy xe.");
+  return { garageId: ownership.customer.garageId, customerId: ownership.customerId };
 }
 
 export interface PortalVehicle {
@@ -65,6 +94,42 @@ export async function listPortalVehicles(
     .map((row) => row.vehicle)
     .filter((vehicle) => vehicle.deletedAt === null)
     .map(({ deletedAt: _deletedAt, ...vehicle }) => vehicle);
+}
+
+export interface PortalAppointmentDetail {
+  id: string;
+  garageId: string;
+  customerId: string;
+  vehicleId: string;
+  status: AppointmentStatus;
+  scheduledAt: Date;
+  endsAt: Date;
+  serviceRequest: string | null;
+  note: string | null;
+}
+
+/** Portal appointment lookup scoped to customer records linked to this user. */
+export async function getPortalAppointment(
+  userId: string,
+  appointmentId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalAppointmentDetail> {
+  const appointment = await db.appointment.findFirst({
+    where: { id: appointmentId, customer: { userId, deletedAt: null } },
+    select: {
+      id: true,
+      garageId: true,
+      customerId: true,
+      vehicleId: true,
+      status: true,
+      scheduledAt: true,
+      endsAt: true,
+      serviceRequest: true,
+      note: true,
+    },
+  });
+  if (!appointment) throw new NotFoundError("Không tìm thấy lịch hẹn.");
+  return appointment;
 }
 
 export interface PortalAppointment {
