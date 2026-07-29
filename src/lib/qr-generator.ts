@@ -7,16 +7,21 @@ export function generateVehicleQrCodeData(vehicleId: string): string {
   return `AUTOCARE:VEHICLE:${vehicleId}`;
 }
 
-export function parseVehicleQrCodeData(qrText: string): string | null {
+export function parseVehicleQrCodeData(qrText: string): string {
   const trimmed = qrText.trim();
   if (trimmed.startsWith("AUTOCARE:VEHICLE:")) {
     return trimmed.replace("AUTOCARE:VEHICLE:", "").trim();
   }
-  // Fallback if plain vehicle ID or UUID is scanned
-  if (trimmed.length > 10) {
-    return trimmed;
+  // Strip URL prefixes if full URL was scanned
+  if (trimmed.includes("/chia-se/")) {
+    const parts = trimmed.split("/chia-se/");
+    return parts[parts.length - 1].trim();
   }
-  return null;
+  if (trimmed.includes("/xe/")) {
+    const parts = trimmed.split("/xe/");
+    return parts[parts.length - 1].trim();
+  }
+  return trimmed;
 }
 
 /**
