@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { decideQuotationItem, saveQuotationDraft, sendQuotation } from "@/features/quotations/service";
+import { decideQuotationItem, decideQuotationItemAsManager, saveQuotationDraft, sendQuotation } from "@/features/quotations/service";
 import { getSessionUser } from "@/lib/auth";
 import { runAction, ValidationError } from "@/lib/errors";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
@@ -50,5 +50,23 @@ export async function decideQuotationItemFormAction(formData: FormData): Promise
     }
     await decideQuotationItem(user.id, itemId, { status, customerNote: String(formData.get("customerNote") ?? "") || null });
     revalidatePath("/tai-khoan");
+  });
+}
+
+export async function decideQuotationItemAsManagerFormAction(formData: FormData): Promise<void> {
+  await runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "quotation:approve");
+    const { garageId } = requireGarageScope(user);
+    const itemId = String(formData.get("quotationItemId") ?? "");
+    const status = String(formData.get("status") ?? "");
+    if (status !== "APPROVED" && status !== "REJECTED" && status !== "NEEDS_CLARIFICATION") {
+      throw new ValidationError("Quyết định báo giá không hợp lệ.");
+    }
+    await decideQuotationItemAsManager(garageId, user.id, itemId, {
+      status,
+      customerNote: String(formData.get("customerNote") ?? "") || null,
+      managerReason: String(formData.get("managerReason") ?? ""),
+    });
+    revalidatePath("/lenh-sua-chua");
   });
 }

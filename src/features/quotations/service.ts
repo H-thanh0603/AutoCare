@@ -308,3 +308,69 @@ export async function decideQuotationItem(
     );
   });
 }
+
+export async function decideQuotationItemAsManager(
+  garageId: string,
+  managerUserId: string,
+  quotationItemId: string,
+  input: { status: QuotationItemStatus; customerNote: string | null; managerReason: string },
+): Promise<void> {
+  const managerReason = input.managerReason.trim();
+  if (managerReason.length < 10) {
+    throw new ValidationError("Manager reason must be at least 10 characters.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const item = await tx.quotationItem.findFirst({
+      where: {
+        id: quotationItemId,
+        quotation: { garageId, status: { in: ["SENT", "PARTIALLY_APPROVED"] } },
+      },
+      include: {
+        quotation: { include: { items: { select: { id: true, status: true } } } },
+      },
+    });
+    if (!item) throw new NotFoundError("Quotation item not found.");
+
+    assertQuotationItemTransition(item.status, input.status);
+    const decidedAt = new Date();
+    await tx.quotationItem.update({
+      where: { id: item.id },
+      data: {
+        status: input.status,
+        customerNote: input.customerNote?.trim() || null,
+        decidedAt,
+      },
+    });
+
+    const statuses = item.quotation.items.map((quotationItem) =>
+      quotationItem.id === item.id ? input.status : quotationItem.status,
+    );
+    const quotationStatus = deriveQuotationStatus(statuses, item.quotation.status);
+    if (quotationStatus !== item.quotation.status) {
+      assertQuotationTransition(item.quotation.status, quotationStatus);
+      await tx.quotation.update({
+        where: { id: item.quotation.id },
+        data: {
+          status: quotationStatus,
+          ...(quotationStatus === "APPROVED" || quotationStatus === "REJECTED"
+            ? { decidedAt }
+            : {}),
+        },
+      });
+    }
+    await recordAudit(
+      {
+        action: AUDIT_ACTIONS.QUOTATION_ITEM_DECIDED,
+        entityType: "QuotationItem",
+        entityId: item.id,
+        garageId,
+        actorUserId: managerUserId,
+        before: { status: item.status },
+        after: { status: input.status, quotationStatus },
+        metadata: { managerReason },
+      },
+      tx,
+    );
+  });
+}

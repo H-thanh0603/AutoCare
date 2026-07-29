@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
+import { getInspectionItemForRepairOrder } from "@/data/inspections";
 import { getRepairOrderDetail } from "@/data/repair-orders";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { NotFoundError, ValidationError } from "@/lib/errors";
@@ -10,7 +11,7 @@ import type { SessionUser } from "@/lib/rbac";
 
 const TOKEN_TTL_MS = 5 * 60_000;
 
-type UploadToken = { key: string; repairOrderId: string; userId: string; mimeType: string; sizeBytes: number; expiresAt: number };
+type UploadToken = { key: string; repairOrderId: string; inspectionItemId?: string; userId: string; mimeType: string; sizeBytes: number; expiresAt: number };
 
 function secret(): string {
   const value = process.env.AUTH_SECRET;
@@ -34,13 +35,16 @@ function verify(token: string, userId: string): UploadToken {
   return payload;
 }
 
-export async function createUploadIntent(user: SessionUser, input: { repairOrderId: string; mimeType: string; sizeBytes: number }) {
+export async function createUploadIntent(user: SessionUser, input: { repairOrderId: string; inspectionItemId?: string; mimeType: string; sizeBytes: number }) {
   validateDeclaredMedia(input.mimeType, input.sizeBytes);
   const garageId = user.garageId;
   if (!garageId) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
   await getRepairOrderDetail(garageId, input.repairOrderId);
+  if (input.inspectionItemId && !await getInspectionItemForRepairOrder(garageId, input.repairOrderId, input.inspectionItemId)) {
+    throw new NotFoundError("Inspection item not found.");
+  }
   const key = mediaStorageKey(garageId, input.repairOrderId);
-  const payload: UploadToken = { key, repairOrderId: input.repairOrderId, userId: user.id, mimeType: input.mimeType, sizeBytes: input.sizeBytes, expiresAt: Date.now() + TOKEN_TTL_MS };
+  const payload: UploadToken = { key, repairOrderId: input.repairOrderId, inspectionItemId: input.inspectionItemId, userId: user.id, mimeType: input.mimeType, sizeBytes: input.sizeBytes, expiresAt: Date.now() + TOKEN_TTL_MS };
   return { uploadUrl: await createUploadUrl(key, input.mimeType), uploadToken: sign(payload) };
 }
 
@@ -49,12 +53,15 @@ export async function completeUpload(user: SessionUser, token: string): Promise<
   const garageId = user.garageId;
   if (!garageId) throw new NotFoundError("Không tìm thấy lệnh sửa chữa.");
   await getRepairOrderDetail(garageId, payload.repairOrderId);
+  if (payload.inspectionItemId && !await getInspectionItemForRepairOrder(garageId, payload.repairOrderId, payload.inspectionItemId)) {
+    throw new NotFoundError("Inspection item not found.");
+  }
   const head = await headMedia(payload.key);
   if (head.ContentLength !== payload.sizeBytes || head.ContentType !== payload.mimeType) throw new ValidationError("Tệp tải lên không hợp lệ.");
   const kind = detectMediaKind(payload.mimeType, await readMediaPrefix(payload.key));
   const media = await prisma.$transaction(async (tx) => {
-    const created = await tx.media.create({ data: { garageId, repairOrderId: payload.repairOrderId, kind, phase: "RECEPTION", storageKey: payload.key, mimeType: payload.mimeType, sizeBytes: payload.sizeBytes, uploadedById: user.id }, select: { id: true } });
-    await recordAudit({ action: AUDIT_ACTIONS.MEDIA_UPLOADED, entityType: "Media", entityId: created.id, garageId, actorUserId: user.id, after: { repairOrderId: payload.repairOrderId, mimeType: payload.mimeType, sizeBytes: payload.sizeBytes } }, tx);
+    const created = await tx.media.create({ data: { garageId, repairOrderId: payload.repairOrderId, inspectionItemId: payload.inspectionItemId, kind, phase: payload.inspectionItemId ? "INSPECTION" : "RECEPTION", storageKey: payload.key, mimeType: payload.mimeType, sizeBytes: payload.sizeBytes, uploadedById: user.id }, select: { id: true } });
+    await recordAudit({ action: AUDIT_ACTIONS.MEDIA_UPLOADED, entityType: "Media", entityId: created.id, garageId, actorUserId: user.id, after: { repairOrderId: payload.repairOrderId, inspectionItemId: payload.inspectionItemId ?? null, mimeType: payload.mimeType, sizeBytes: payload.sizeBytes } }, tx);
     return created;
   });
   return media;

@@ -49,3 +49,18 @@ export async function getInspectionForRepairOrder(
     select: inspectionSelect,
   });
 }
+
+export async function getInspectionItemForRepairOrder(
+  garageId: string,
+  repairOrderId: string,
+  inspectionItemId: string,
+  db: PrismaClientOrTx = prisma,
+) {
+  return db.inspectionItem.findFirst({
+    where: {
+      id: inspectionItemId,
+      inspection: { garageId, repairOrderId },
+    },
+    select: { id: true },
+  });
+}

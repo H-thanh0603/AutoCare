@@ -9,6 +9,7 @@ const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "a
 
 export const presignRequestSchema = z.object({
   repairOrderId: z.string().min(1),
+  inspectionItemId: z.string().min(1).optional(),
   mimeType: z.string(),
   sizeBytes: z.coerce.number().int().positive(),
 });

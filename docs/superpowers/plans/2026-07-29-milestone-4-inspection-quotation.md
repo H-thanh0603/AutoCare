@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 16 App Router, React 19, TypeScript, Prisma 7/PostgreSQL, Auth.js, Zod, React Hook Form, Vitest, Playwright.
 
+**Implementation status (2026-07-29):** Completed and verified. The destructive local `db:reset` step was intentionally not run; the already-migrated database passed `prisma migrate status` instead.
+
 ## Global Constraints
 
 - `docs/WORKFLOWS.md` là nguồn đúng cho transition; không set `status` tùy ý.

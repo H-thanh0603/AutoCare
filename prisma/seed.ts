@@ -867,7 +867,7 @@ async function main(): Promise<void> {
     sortOrder: index + 1,
   }));
 
-  await prisma.quotation.create({
+  const quotation2 = await prisma.quotation.create({
     data: {
       garageId: garage.id,
       repairOrderId: ro2.id,
@@ -889,7 +889,7 @@ async function main(): Promise<void> {
       type: "QUOTATION",
       title: "Báo giá mới cho xe 30K-678.90",
       body: "Gara Thành Đạt đã gửi báo giá cho lệnh RO-2026-0002. Vui lòng xác nhận từng hạng mục.",
-      data: { href: `/portal/lenh-sua-chua/${ro2.id}` },
+      data: { href: `/tai-khoan/bao-gia/${quotation2.id}` },
     },
   });
 
@@ -967,6 +967,7 @@ async function main(): Promise<void> {
       versionNo: 2,
       status: "SENT",
       isSupplementary: true,
+      parentQuotationId: quotation3.id,
       note: "Phát sinh trong quá trình tháo gầm: cao su càng A nứt.",
       validUntil: daysFromNow(5),
       sentAt: daysAgo(1),

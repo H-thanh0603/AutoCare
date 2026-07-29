@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { BusinessRuleError, NotFoundError } from "@/lib/errors";
+import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 
 const PREFIX = `test-inspection-quotation-${Date.now()}`;
@@ -95,7 +95,7 @@ describe("inspection and quotation invariants", () => {
   });
 
   it("starts a scoped inspection and saves its findings", async () => {
-    const { getInspectionForRepairOrder } = await import("@/data/inspections");
+    const { getInspectionForRepairOrder, getInspectionItemForRepairOrder } = await import("@/data/inspections");
     const { saveInspection, startInspection } = await import(
       "@/features/inspections/service"
     );
@@ -121,7 +121,8 @@ describe("inspection and quotation invariants", () => {
     await expect(prisma.repairOrder.findUniqueOrThrow({ where: { id: repairOrderId } })).resolves.toMatchObject({
       status: "INSPECTING",
     });
-    await expect(getInspectionForRepairOrder(garageId, repairOrderId)).resolves.toMatchObject({
+    const savedInspection = await getInspectionForRepairOrder(garageId, repairOrderId);
+    expect(savedInspection).toMatchObject({
       id: inspection.id,
       summary: "Phát hiện cần xử lý phanh trước.",
       items: [
@@ -131,6 +132,13 @@ describe("inspection and quotation invariants", () => {
     await expect(
       prisma.auditLog.findFirst({ where: { garageId, entityId: inspection.id, action: "inspection.updated" } }),
     ).resolves.not.toBeNull();
+
+    await expect(
+      getInspectionItemForRepairOrder(garageId, repairOrderId, "not-an-inspection-item"),
+    ).resolves.toBeNull();
+    await expect(
+      getInspectionItemForRepairOrder(garageId, repairOrderId, savedInspection!.items[0].id),
+    ).resolves.toMatchObject({ id: savedInspection!.items[0].id });
   });
 
   it("calculates a draft quotation and sends it to the customer", async () => {
@@ -232,6 +240,50 @@ describe("inspection and quotation invariants", () => {
       version: original.version + 1,
     });
     expect(revision).toMatchObject({ versionNo: 2, status: "DRAFT", totalAmount: 500_000 });
+  });
+
+  it("requires a manager reason when deciding a quotation item", async () => {
+    const { decideQuotationItemAsManager } = await import("@/features/quotations/service");
+    const quotation = await prisma.quotation.create({
+      data: {
+        garageId,
+        repairOrderId,
+        versionNo: 3,
+        status: "SENT",
+        totalAmount: 200_000,
+        items: {
+          create: {
+            type: "OTHER",
+            description: "Hạng mục cần quản lý duyệt",
+            quantity: 1,
+            unitPrice: 200_000,
+            totalAmount: 200_000,
+          },
+        },
+      },
+      include: { items: true },
+    });
+    const item = quotation.items[0];
+
+    await expect(
+      decideQuotationItemAsManager(garageId, actorUserId, item.id, {
+        status: "APPROVED",
+        customerNote: null,
+        managerReason: "ngắn",
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    await decideQuotationItemAsManager(garageId, actorUserId, item.id, {
+      status: "APPROVED",
+      customerNote: null,
+      managerReason: "Đã đối chiếu tình trạng xe thực tế.",
+    });
+    await expect(prisma.quotationItem.findUniqueOrThrow({ where: { id: item.id } })).resolves.toMatchObject({
+      status: "APPROVED",
+    });
+    await expect(
+      prisma.auditLog.findFirst({ where: { garageId, entityId: item.id, action: "quotation.item_decided" } }),
+    ).resolves.toMatchObject({ metadata: { managerReason: "Đã đối chiếu tình trạng xe thực tế." } });
   });
 
   it("scopes quotation reads and notification read state to the customer", async () => {
