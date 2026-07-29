@@ -233,4 +233,26 @@ describe("inspection and quotation invariants", () => {
     });
     expect(revision).toMatchObject({ versionNo: 2, status: "DRAFT", totalAmount: 500_000 });
   });
+
+  it("scopes quotation reads and notification read state to the customer", async () => {
+    const { getPortalQuotation } = await import("@/data/portal");
+    const { listNotificationsForUser, markNotificationRead } = await import(
+      "@/data/notifications"
+    );
+    const quotation = await prisma.quotation.findFirstOrThrow({ where: { repairOrderId } });
+    const notifications = await listNotificationsForUser(customerUserId);
+
+    await expect(getPortalQuotation("not-the-owner", quotation.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    await expect(getPortalQuotation(customerUserId, quotation.id)).resolves.toMatchObject({
+      id: quotation.id,
+      repairOrder: { vehicle: { licensePlate: PREFIX } },
+    });
+    expect(notifications).toHaveLength(1);
+    await markNotificationRead(customerUserId, notifications[0].id);
+    await expect(prisma.notification.findUniqueOrThrow({ where: { id: notifications[0].id } })).resolves.toMatchObject({
+      readAt: expect.any(Date),
+    });
+  });
 });

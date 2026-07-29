@@ -197,3 +197,55 @@ export async function listPortalRepairOrders(
     take: options.take ?? 10,
   });
 }
+
+export async function getPortalQuotation(
+  userId: string,
+  quotationId: string,
+  db: PrismaClientOrTx = prisma,
+) {
+  const quotation = await db.quotation.findFirst({
+    where: {
+      id: quotationId,
+      repairOrder: {
+        customer: { userId, deletedAt: null },
+        vehicle: {
+          ownerships: {
+            some: { isCurrent: true, endedAt: null, customer: { userId, deletedAt: null } },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      versionNo: true,
+      status: true,
+      note: true,
+      validUntil: true,
+      totalAmount: true,
+      items: {
+        select: {
+          id: true,
+          type: true,
+          description: true,
+          quantity: true,
+          unitPrice: true,
+          discountAmount: true,
+          totalAmount: true,
+          status: true,
+          customerNote: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      repairOrder: {
+        select: {
+          id: true,
+          code: true,
+          garage: { select: { name: true } },
+          vehicle: { select: { licensePlate: true, brand: true, model: true } },
+        },
+      },
+    },
+  });
+  if (!quotation) throw new NotFoundError("Không tìm thấy báo giá.");
+  return quotation;
+}

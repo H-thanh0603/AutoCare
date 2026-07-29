@@ -118,6 +118,7 @@ const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   "repair-order:write",
   "repair-order:deliver",
   "inspection:read",
+  "inspection:write",
   "quotation:read",
   "quotation:write",
   "quotation:send",
@@ -153,6 +154,7 @@ const GARAGE_MANAGER_PERMISSIONS: readonly Permission[] = [
     "garage-member:read",
     "garage-member:write",
     "garage-settings:write",
+    "quotation:approve",
   ]),
 ];
 

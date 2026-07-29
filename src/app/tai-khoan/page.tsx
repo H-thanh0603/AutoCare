@@ -7,7 +7,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, Car, Wrench } from "lucide-react";
+import { Bell, CalendarClock, Car, Wrench } from "lucide-react";
 
 import {
   listPortalAppointments,
@@ -57,6 +57,7 @@ export default async function PortalPage() {
         <p className="text-muted-foreground mt-1 text-sm">
           Xe, lịch hẹn và lịch sử sửa chữa của bạn.
         </p>
+        <Link href="/tai-khoan/thong-bao" className="mt-3 inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"><Bell className="size-4" />Thông báo</Link>
       </div>
 
       {!hasAnything && (
