@@ -115,8 +115,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 /** Current session user, or null when unauthenticated. */
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  const { id, email, name, role, garageId, garageRole } = session.user;
-  return { id, email, name, role, garageId, garageRole };
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return null;
+    const { id, email, name, role, garageId, garageRole } = session.user;
+    return { id, email, name, role, garageId, garageRole };
+  } catch (error) {
+    // If the session cookie is invalid, corrupted, or stale, fail gracefully as unauthenticated
+    return null;
+  }
 }

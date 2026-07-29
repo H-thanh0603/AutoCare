@@ -62,6 +62,7 @@ export function asGarageRole(value: unknown): GarageRole | null {
  * Node-side override in `./auth.ts`.
  */
 export const authConfig = {
+  secret: process.env.AUTH_SECRET ?? "autocare-jwt-secret-key-2026-fallback",
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/dang-nhap" },
   trustHost: true,
