@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Car, Sparkles } from "lucide-react";
+import { Car } from "lucide-react";
 
 import { RegisterForm } from "@/features/auth/register-form";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/rbac";
 
 export const metadata: Metadata = {
-  title: "Đăng ký · AutoCare",
+  title: "Đăng ký · AutoCare.vn",
   description: "Tạo tài khoản khách hàng để theo dõi lịch sử bảo dưỡng xe của bạn.",
 };
 
@@ -19,44 +19,38 @@ export default async function RegisterPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center px-4 py-12 selection:bg-blue-500 selection:text-white">
-      {/* Ambient background glows */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px]" />
-        <div className="absolute bottom-10 right-1/3 w-80 h-80 bg-indigo-600/15 rounded-full blur-[128px]" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-md space-y-6">
+    <main className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50/50 to-slate-100 text-slate-900 flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md space-y-6 relative z-10">
         <div className="text-center space-y-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-2.5 group"
+            className="inline-flex items-center gap-3 group"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Car className="size-5 text-blue-400" aria-hidden="true" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
+              <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
+                <Car className="size-6 text-blue-600" aria-hidden="true" />
               </div>
             </div>
-            <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-blue-400 bg-clip-text text-transparent">
-              AutoCare
+            <span className="font-extrabold text-2xl tracking-tight text-slate-900">
+              AutoCare<span className="text-blue-600">.vn</span>
             </span>
           </Link>
 
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Tạo tài khoản Chủ Xe
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs font-medium text-slate-600">
             Đặt lịch trực tuyến, duyệt báo giá minh bạch và lưu giữ Hồ sơ sức khỏe xe điện tử.
           </p>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl">
           <RegisterForm />
         </div>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs font-medium text-slate-600">
           Đã có tài khoản?{" "}
-          <Link href="/dang-nhap" className="font-medium text-blue-400 hover:text-blue-300 underline underline-offset-4">
+          <Link href="/dang-nhap" className="font-bold text-blue-600 hover:text-blue-700 underline underline-offset-4">
             Đăng nhập ngay
           </Link>
         </p>
