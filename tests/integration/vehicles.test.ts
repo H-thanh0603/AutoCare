@@ -8,6 +8,7 @@ import {
   recordVehicleMileage,
   transferVehicleOwnership,
 } from "@/features/vehicles/service";
+import { createVehicleSchema } from "@/features/vehicles/schema";
 import { NotFoundError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 
@@ -16,6 +17,7 @@ let garageAId: string;
 let garageBId: string;
 let customerAId: string;
 let customerA2Id: string;
+let actorUserId: string;
 let vehicleId: string;
 
 beforeAll(async () => {
@@ -25,6 +27,15 @@ beforeAll(async () => {
   ]);
   garageAId = garageA.id;
   garageBId = garageB.id;
+  const actor = await prisma.user.create({
+    data: {
+      email: `${PREFIX}@example.com`,
+      passwordHash: "test-password-hash",
+      name: "Nhân viên kiểm thử",
+      role: "STAFF",
+    },
+  });
+  actorUserId = actor.id;
 
   const customerA = await createGarageCustomer(garageAId, {
     name: "Nguyễn Minh An",
@@ -43,17 +54,18 @@ beforeAll(async () => {
   });
   customerA2Id = customerA2.id;
 
-  const vehicle = await createGarageVehicle(garageAId, "test-actor", {
+  const vehicleInput = createVehicleSchema.parse({
     customerId: customerAId,
     licensePlate: "51F-123.45",
-    vin: null,
+    vin: "",
     brand: "Toyota",
     model: "Vios",
     year: 2023,
-    color: null,
-    engineNumber: null,
+    color: "",
+    engineNumber: "",
     currentKm: 50_000,
   });
+  const vehicle = await createGarageVehicle(garageAId, actorUserId, vehicleInput);
   vehicleId = vehicle.id;
 });
 
@@ -65,6 +77,7 @@ afterAll(async () => {
   await prisma.vehicle.deleteMany({ where: { id: vehicleId } });
   await prisma.customer.deleteMany({ where: { garageId: { in: [garageAId, garageBId] } } });
   await prisma.garage.deleteMany({ where: { id: { in: [garageAId, garageBId] } } });
+  await prisma.user.deleteMany({ where: { id: actorUserId } });
 });
 
 describe("vehicle garage scope", () => {
@@ -92,7 +105,7 @@ describe("vehicle garage scope", () => {
 
 describe("vehicle ownership and mileage", () => {
   it("transfers ownership atomically and retains technical history", async () => {
-    await transferVehicleOwnership(garageAId, vehicleId, "test-actor", {
+    await transferVehicleOwnership(garageAId, vehicleId, actorUserId, {
       customerId: customerA2Id,
       note: "Bán lại xe cho chủ mới.",
     });
@@ -112,7 +125,7 @@ describe("vehicle ownership and mileage", () => {
 
   it("rejects a lower mileage without an override", async () => {
     await expect(
-      recordVehicleMileage(garageAId, vehicleId, "test-actor", false, {
+      recordVehicleMileage(garageAId, vehicleId, actorUserId, false, {
         mileageKm: 49_000,
         note: null,
         overrideReason: null,
@@ -121,7 +134,7 @@ describe("vehicle ownership and mileage", () => {
   });
 
   it("records a manager mileage override with an audit row", async () => {
-    await recordVehicleMileage(garageAId, vehicleId, "test-manager", true, {
+    await recordVehicleMileage(garageAId, vehicleId, actorUserId, true, {
       mileageKm: 49_000,
       note: "Thay cụm đồng hồ.",
       overrideReason: "Đồng hồ đã được thay mới.",

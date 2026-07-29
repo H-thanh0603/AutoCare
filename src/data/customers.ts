@@ -9,6 +9,7 @@
 import { NotFoundError } from "@/lib/errors";
 import { prisma, type PrismaClientOrTx } from "@/lib/prisma";
 import type { CustomerInput } from "@/features/customers/schema";
+import type { RepairOrderStatus } from "@/generated/prisma/enums";
 
 const listSelect = {
   id: true,
@@ -124,6 +125,13 @@ export interface CustomerDetail {
     currentKm: number | null;
     ownedSince: Date;
   }[];
+  repairOrders: {
+    id: string;
+    code: string;
+    status: RepairOrderStatus;
+    receivedAt: Date;
+    vehicle: { id: string; licensePlate: string; brand: string; model: string };
+  }[];
 }
 
 /** Full record for the detail page, including currently owned vehicles. */
@@ -152,6 +160,18 @@ export async function getCustomerDetail(
           },
         },
         orderBy: { startedAt: "desc" },
+      },
+      repairOrders: {
+        where: { garageId },
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          receivedAt: true,
+          vehicle: { select: { id: true, licensePlate: true, brand: true, model: true } },
+        },
+        orderBy: { receivedAt: "desc" },
+        take: 20,
       },
     },
   });

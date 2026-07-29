@@ -1,7 +1,8 @@
 # Mốc 2 — Khách hàng và xe
 
-Trạng thái: **Đang triển khai**
+Trạng thái: **Hoàn thành**
 Ngày bắt đầu: 2026-07-27
+Ngày hoàn thành: 2026-07-29
 
 ## 1. Mục tiêu
 
@@ -51,9 +52,11 @@ hẹn, lệnh sửa chữa, báo giá hay hồ sơ sức khỏe xe.
 
 ## 5. Data model thay đổi
 
-Không có migration mới. Toàn bộ bảng cần dùng đã tạo ở Mốc 1: `customers`,
-`vehicles`, `vehicle_ownerships`, `mileage_logs`, `vehicle_timeline_events`,
-`audit_logs`.
+Không thêm bảng mới. Migration
+`20260727220000_enforce_single_current_vehicle_ownership` thêm partial unique
+index để mỗi xe chỉ có một `VehicleOwnership` đang hiệu lực. Các bảng nghiệp vụ
+đã có từ Mốc 1: `customers`, `vehicles`, `vehicle_ownerships`, `mileage_logs`,
+`vehicle_timeline_events`, `audit_logs`.
 
 ## 6. Routes và server actions
 
@@ -144,16 +147,26 @@ Zod, chạy cả client (UX) và server (thẩm quyền):
 | `currentKm` lệch với `MileageLog` | Chỉ cập nhật `currentKm` trong cùng transaction với việc ghi log |
 | Xóa mềm khách còn lệnh sửa chữa mở gây dữ liệu treo | Kiểm tra lệnh đang mở trước khi xóa, trả lỗi nghiệp vụ |
 
-## 12. Kiểm chứng hiện tại
+## 12. Kiểm chứng hoàn tất
 
+- `pnpm prisma migrate dev`: áp dụng migration
+  `20260727220000_enforce_single_current_vehicle_ownership`.
+- `pnpm prisma migrate status`: database đã đồng bộ, 3 migrations.
 - `pnpm typecheck`: đạt.
 - `pnpm lint`: đạt.
 - `pnpm test`: đạt, 3 file / 62 tests.
+- `pnpm test:integration`: đạt, 2 file / 12 tests.
 - `pnpm build`: đạt, 20 routes.
-- Code review + security review: không còn lỗi CRITICAL/HIGH đã xác nhận.
-- `pnpm prisma migrate dev`, `pnpm prisma migrate status`, `pnpm test:integration`:
-  chưa đạt vì PostgreSQL tại `localhost:5432` không reachable (`P1001`); Docker Desktop daemon cũng đang tắt.
+- Code review + accessibility review: không còn lỗi CRITICAL/HIGH đã xác nhận.
+- E2E Playwright: chưa chạy vì project chưa cài Playwright.
 
-Mốc vẫn **Đang triển khai**. Cần khởi động PostgreSQL/Docker Desktop, chạy migration
-`20260727220000_enforce_single_current_vehicle_ownership`, rồi chạy lại toàn bộ
-integration tests trước khi đánh dấu hoàn thành.
+## 13. Báo cáo hoàn thành
+
+- Customer và vehicle CRUD dùng action/service/repository tách lớp; mọi write lấy
+  `garageId` từ session.
+- Chuyển chủ và ghi km chạy trong transaction, khóa row xe; database có partial
+  unique index để chặn nhiều ownership hiện tại.
+- Chủ cũ thuộc garage khác được ẩn PII trong lịch sử ownership.
+- Đã thêm integration coverage cho scope xe, ownership transfer, audit override km
+  và phone trùng khác garage.
+- Không có E2E vì Playwright chưa được cài; cần bổ sung trước release production.
