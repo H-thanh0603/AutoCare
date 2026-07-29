@@ -61,6 +61,7 @@ async function resetDatabase(): Promise<void> {
     prisma.inspection.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.repairOrder.deleteMany(),
+    prisma.repairOrderSequence.deleteMany(),
     prisma.appointment.deleteMany(),
     prisma.mileageLog.deleteMany(),
     prisma.vehicleOwnership.deleteMany(),
