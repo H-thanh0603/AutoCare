@@ -21,14 +21,14 @@ import { assertTransition, type TransitionMap } from "./state-machine";
 /* Appointment                                                         */
 /* ------------------------------------------------------------------ */
 
-export const APPOINTMENT_TRANSITIONS: TransitionMap<AppointmentStatus> = {
+export const APPOINTMENT_TRANSITIONS = {
   PENDING: ["CONFIRMED", "CANCELLED"],
   CONFIRMED: ["ARRIVED", "CANCELLED", "NO_SHOW"],
-  ARRIVED: ["COMPLETED", "CANCELLED"],
+  ARRIVED: ["COMPLETED"],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],
-};
+} satisfies TransitionMap<AppointmentStatus>;
 
 export const APPOINTMENT_LABELS: Record<AppointmentStatus, string> = {
   PENDING: "Chờ xác nhận",

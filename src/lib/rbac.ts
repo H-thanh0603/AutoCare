@@ -39,6 +39,9 @@ export type Permission =
   | "appointment:read"
   | "appointment:write"
   | "appointment:confirm"
+  | "media:read"
+  | "media:write"
+  | "garage-settings:write"
   | "repair-order:read"
   | "repair-order:write"
   | "repair-order:deliver"
@@ -109,6 +112,8 @@ const RECEPTIONIST_PERMISSIONS: readonly Permission[] = [
   "appointment:read",
   "appointment:write",
   "appointment:confirm",
+  "media:read",
+  "media:write",
   "repair-order:read",
   "repair-order:write",
   "repair-order:deliver",
@@ -147,6 +152,7 @@ const GARAGE_MANAGER_PERMISSIONS: readonly Permission[] = [
     "audit-log:read",
     "garage-member:read",
     "garage-member:write",
+    "garage-settings:write",
   ]),
 ];
 

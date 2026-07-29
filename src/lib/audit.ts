@@ -29,8 +29,13 @@ export const AUDIT_ACTIONS = {
   MAINTENANCE_RECORD_AMENDED: "maintenance_record.amended",
   SHARE_LINK_CREATED: "share_link.created",
   SHARE_LINK_REVOKED: "share_link.revoked",
+  APPOINTMENT_STATUS_CHANGED: "appointment.status_changed",
+  APPOINTMENT_RESCHEDULED: "appointment.rescheduled",
+  REPAIR_ORDER_RECEIVED: "repair_order.received",
+  REPAIR_ORDER_WALK_IN: "repair_order.walk_in",
   REPAIR_ORDER_STATUS_CHANGED: "repair_order.status_changed",
   VEHICLE_DELIVERED: "repair_order.delivered",
+  MEDIA_UPLOADED: "media.uploaded",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

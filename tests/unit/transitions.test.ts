@@ -33,7 +33,10 @@ describe("appointment transitions", () => {
     );
   });
 
-  it("rejects leaving a terminal state", () => {
+  it("rejects cancellation after arrival and leaving terminal states", () => {
+    expect(() => assertAppointmentTransition("ARRIVED", "CANCELLED")).toThrow(
+      BusinessRuleError,
+    );
     expect(() => assertAppointmentTransition("CANCELLED", "CONFIRMED")).toThrow(
       BusinessRuleError,
     );

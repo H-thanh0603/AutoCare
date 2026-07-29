@@ -7,6 +7,10 @@
 
 import type { PrismaClientOrTx } from "@/lib/prisma";
 import { prisma } from "@/lib/prisma";
+import {
+  parseAppointmentSettings,
+  type AppointmentSettings,
+} from "@/lib/appointment-settings";
 import { NotFoundError } from "@/lib/errors";
 
 export interface GarageProfile {
@@ -15,6 +19,7 @@ export interface GarageProfile {
   address: string | null;
   phone: string | null;
   email: string | null;
+  appointmentSettings: AppointmentSettings;
 }
 
 const profileSelect = {
@@ -23,13 +28,61 @@ const profileSelect = {
   address: true,
   phone: true,
   email: true,
+  settings: true,
 } as const;
 
 export async function findGarageById(
   garageId: string,
   db: PrismaClientOrTx = prisma,
 ): Promise<GarageProfile | null> {
-  return db.garage.findUnique({ where: { id: garageId }, select: profileSelect });
+  const garage = await db.garage.findUnique({
+    where: { id: garageId },
+    select: profileSelect,
+  });
+  if (!garage) return null;
+
+  return {
+    id: garage.id,
+    name: garage.name,
+    address: garage.address,
+    phone: garage.phone,
+    email: garage.email,
+    appointmentSettings: parseAppointmentSettings(garage.settings),
+  };
+}
+
+export async function updateGarageAppointmentSettings(
+  garageId: string,
+  settings: AppointmentSettings,
+  db: PrismaClientOrTx = prisma,
+): Promise<void> {
+  const garage = await db.garage.findUnique({
+    where: { id: garageId },
+    select: { settings: true },
+  });
+  if (!garage) {
+    throw new NotFoundError("Không tìm thấy gara.");
+  }
+
+  const existingSettings =
+    garage.settings && typeof garage.settings === "object" && !Array.isArray(garage.settings)
+      ? garage.settings
+      : {};
+  await db.garage.update({
+    where: { id: garageId },
+    data: {
+      settings: {
+        ...existingSettings,
+        appointmentSlotMinutes: settings.appointmentSlotMinutes,
+        workingHours: Object.fromEntries(
+          Object.entries(settings.workingHours).map(([day, hours]) => [
+            day,
+            { open: hours.open, close: hours.close },
+          ]),
+        ),
+      },
+    },
+  });
 }
 
 export async function getGarageById(
