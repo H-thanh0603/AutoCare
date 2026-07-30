@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { RecordSource, TimelineEventType } from "@/generated/prisma/enums";
+import { assertVehicleInGarage } from "@/data/vehicles";
 import {
   calculateNextServiceDue,
   sanitizePublicVehicleHealth,
@@ -7,6 +8,15 @@ import {
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { PrismaClientOrTx, prisma } from "@/lib/prisma";
+
+/**
+ * Caps on the history lists so a vehicle with a long service life cannot make
+ * these reads load an unbounded number of rows. Ordered newest-first, so the
+ * cap keeps the most recent records — enough for every current view.
+ */
+const MAX_TIMELINE_EVENTS = 200;
+const MAX_MAINTENANCE_RECORDS = 200;
+const MAX_WARRANTIES = 200;
 
 export async function syncVehicleHealthFromRepairOrder(
   repairOrderId: string,
@@ -63,13 +73,14 @@ export async function syncVehicleHealthFromRepairOrder(
     },
   });
 
-  // 3. Create default Warranties for completed parts/services
-  for (const task of order.workTasks) {
-    const warrantyMonths = 6;
-    const expiresAt = new Date(now.getTime() + warrantyMonths * 30 * 86400 * 1000);
+  // 3. Create default Warranties for completed parts/services in one write.
+  const warrantyMonths = 6;
+  const expiresAt = new Date(now.getTime() + warrantyMonths * 30 * 86400 * 1000);
+  const baseMileage = order.mileageKm ?? order.vehicle.currentKm ?? 0;
 
-    await tx.warranty.create({
-      data: {
+  if (order.workTasks.length > 0) {
+    await tx.warranty.createMany({
+      data: order.workTasks.map((task) => ({
         vehicleId: order.vehicleId,
         garageId: order.garageId,
         repairOrderId: order.id,
@@ -78,9 +89,9 @@ export async function syncVehicleHealthFromRepairOrder(
         terms: "Bảo hành tiêu chuẩn garage 6 tháng / 10.000 km",
         startsAt: now,
         expiresAt,
-        mileageLimitKm: (order.mileageKm ?? order.vehicle.currentKm ?? 0) + 10000,
+        mileageLimitKm: baseMileage + 10000,
         isActive: true,
-      },
+      })),
     });
   }
 
@@ -99,7 +110,7 @@ export async function syncVehicleHealthFromRepairOrder(
 export async function createShareLink(input: {
   vehicleId: string;
   durationDays?: number;
-  garageId?: string | null;
+  garageId: string;
   createdById: string;
 }) {
   const { vehicleId, durationDays = 30, garageId, createdById } = input;
@@ -112,8 +123,9 @@ export async function createShareLink(input: {
   const expiresAt = new Date(Date.now() + durationDays * 86400 * 1000);
 
   return prisma.$transaction(async (tx) => {
-    const vehicle = await tx.vehicle.findUnique({ where: { id: vehicleId } });
-    if (!vehicle) throw new NotFoundError("Không tìm thấy xe.");
+    // Tenant scope: the vehicle must be owned by a customer of this garage.
+    // A missing/foreign vehicle fails identically so ids cannot be probed.
+    await assertVehicleInGarage(garageId, vehicleId, tx);
 
     const shareLink = await tx.shareLink.create({
       data: {
@@ -129,7 +141,7 @@ export async function createShareLink(input: {
         action: AUDIT_ACTIONS.SHARE_LINK_CREATED,
         entityType: "ShareLink",
         entityId: shareLink.id,
-        garageId: garageId ?? null,
+        garageId,
         actorUserId: createdById,
         after: { vehicleId, expiresAt },
       },
@@ -162,10 +174,10 @@ export async function getPublicVehicleHealth(token: string) {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: shareLink.vehicleId },
     include: {
-      timelineEvents: { orderBy: { occurredAt: "desc" } },
-      maintenance: { orderBy: { performedAt: "desc" } },
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
       systemStatuses: { orderBy: { updatedAt: "desc" } },
-      warranties: { where: { isActive: true }, orderBy: { startsAt: "desc" } },
+      warranties: { where: { isActive: true }, orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
     },
   });
 
@@ -215,12 +227,31 @@ export async function getPublicVehicleHealth(token: string) {
   });
 }
 
-export async function revokeShareLink(input: { shareLinkId: string; actorUserId: string }) {
-  const { shareLinkId, actorUserId } = input;
+export async function revokeShareLink(input: {
+  shareLinkId: string;
+  garageId: string;
+  actorUserId: string;
+}) {
+  const { shareLinkId, garageId, actorUserId } = input;
   if (!shareLinkId) throw new ValidationError("ID liên kết chia sẻ là bắt buộc.");
 
   return prisma.$transaction(async (tx) => {
-    const link = await tx.shareLink.findUnique({ where: { id: shareLinkId } });
+    // Tenant scope: only links for vehicles owned by this garage's customers
+    // can be revoked. A foreign or nonexistent id yields the same NotFound.
+    const link = await tx.shareLink.findFirst({
+      where: {
+        id: shareLinkId,
+        vehicle: {
+          ownerships: {
+            some: {
+              isCurrent: true,
+              endedAt: null,
+              customer: { garageId, deletedAt: null },
+            },
+          },
+        },
+      },
+    });
     if (!link) throw new NotFoundError("Không tìm thấy liên kết chia sẻ.");
 
     if (link.revokedAt) {
@@ -237,6 +268,7 @@ export async function revokeShareLink(input: { shareLinkId: string; actorUserId:
         action: AUDIT_ACTIONS.SHARE_LINK_REVOKED,
         entityType: "ShareLink",
         entityId: shareLinkId,
+        garageId,
         actorUserId,
         after: { revokedAt: updated.revokedAt },
       },
@@ -293,11 +325,42 @@ export async function getVehicleHealthOverview(vehicleId: string) {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: vehicleId },
     include: {
-      timelineEvents: { orderBy: { occurredAt: "desc" } },
-      maintenance: { orderBy: { performedAt: "desc" } },
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
       systemStatuses: { orderBy: { updatedAt: "desc" } },
-      warranties: { orderBy: { startsAt: "desc" } },
+      warranties: { orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
       shareLinks: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+    },
+  });
+
+  if (!vehicle) throw new NotFoundError("Không tìm thấy thông tin xe.");
+  return vehicle;
+}
+
+/**
+ * Vehicle health for the customer portal, scoped to the requesting account in a
+ * single query: the vehicle must be currently owned by a customer record linked
+ * to `userId`. This both authorizes the read and returns the data, so callers no
+ * longer load the whole vehicle list just to check ownership.
+ */
+export async function getPortalVehicleHealth(userId: string, vehicleId: string) {
+  const vehicle = await prisma.vehicle.findFirst({
+    where: {
+      id: vehicleId,
+      deletedAt: null,
+      ownerships: {
+        some: {
+          isCurrent: true,
+          endedAt: null,
+          customer: { userId, deletedAt: null },
+        },
+      },
+    },
+    include: {
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
+      systemStatuses: { orderBy: { updatedAt: "desc" } },
+      warranties: { orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
     },
   });
 

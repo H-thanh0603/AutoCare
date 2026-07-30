@@ -33,15 +33,15 @@ describe("Security & Input Sanitization", () => {
     expect(clean.tags[0]).toBe("tag1");
   });
 
-  it("enforces sliding window rate limits", () => {
+  it("enforces sliding window rate limits", async () => {
     const identifier = `test-ip-${Date.now()}`;
     const options = { identifier, maxRequests: 2, windowMs: 1000 };
 
-    expect(checkRateLimit(options).allowed).toBe(true);
-    expect(checkRateLimit(options).allowed).toBe(true);
-    expect(checkRateLimit(options).allowed).toBe(false);
+    expect((await checkRateLimit(options)).allowed).toBe(true);
+    expect((await checkRateLimit(options)).allowed).toBe(true);
+    expect((await checkRateLimit(options)).allowed).toBe(false);
 
-    expect(() => assertRateLimit(options)).toThrow(TooManyRequestsError);
+    await expect(assertRateLimit(options)).rejects.toThrow(TooManyRequestsError);
   });
 
   it("rejects payloads exceeding specified size limit", () => {

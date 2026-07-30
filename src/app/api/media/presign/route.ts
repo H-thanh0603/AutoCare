@@ -10,7 +10,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     assertPayloadSize(request);
     const clientIp = getClientIp(request);
-    assertRateLimit({ identifier: `media-presign:${clientIp}`, maxRequests: 20, windowMs: 60_000 });
+    await assertRateLimit({ identifier: `media-presign:${clientIp}`, maxRequests: 20, windowMs: 60_000 });
 
     const rawJson = await request.json();
     const sanitized = sanitizePayload(rawJson);

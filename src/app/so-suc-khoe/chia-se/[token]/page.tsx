@@ -1,4 +1,13 @@
+import { headers } from "next/headers";
+
 import { getPublicVehicleHealth } from "@/features/vehicle-health/service";
+import { RATE_LIMITS, checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
+
+/** Best-effort client IP for rate limiting the unauthenticated share endpoint. */
+async function publicClientIp(): Promise<string> {
+  const headerList = await headers();
+  return resolveClientIp(headerList);
+}
 
 export default async function PublicVehicleHealthPage({
   params,
@@ -9,10 +18,17 @@ export default async function PublicVehicleHealthPage({
   let health;
   let errorMsg: string | null = null;
 
-  try {
-    health = await getPublicVehicleHealth(token);
-  } catch (err) {
-    errorMsg = err instanceof Error ? err.message : "Không thể tải hồ sơ xe.";
+  const ip = await publicClientIp();
+  const limit = await checkRateLimit({ key: `public-share:${ip}`, ...RATE_LIMITS.PUBLIC_SHARE });
+
+  if (!limit.ok) {
+    errorMsg = `Bạn đã truy cập quá nhiều lần. Vui lòng thử lại sau ${limit.retryAfterSeconds} giây.`;
+  } else {
+    try {
+      health = await getPublicVehicleHealth(token);
+    } catch (err) {
+      errorMsg = err instanceof Error ? err.message : "Không thể tải hồ sơ xe.";
+    }
   }
 
   if (errorMsg || !health) {

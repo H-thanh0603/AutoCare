@@ -167,7 +167,7 @@ describe("Vehicle Health Record & Share Link Integration", () => {
   });
 
   it("revokes share link and rejects access (Rule 18)", async () => {
-    await revokeShareLink({ shareLinkId, actorUserId });
+    await revokeShareLink({ shareLinkId, garageId, actorUserId });
 
     await expect(getPublicVehicleHealth(shareToken)).rejects.toThrow(BusinessRuleError);
   });

@@ -47,13 +47,30 @@ async function loadAuthUser(email: string) {
   });
 }
 
-async function loadMembership(userId: string) {
-  const membership = await prisma.garageMember.findFirst({
-    where: { userId, isActive: true },
-    orderBy: { createdAt: "desc" },
-    select: { garageId: true, role: true },
+/**
+ * Re-reads the mutable authorization claims for a user: platform role, active
+ * garage membership, and whether the account is still active.
+ *
+ * Returns null when the account has been deactivated or removed, so the caller
+ * can invalidate the session instead of trusting stale claims.
+ */
+async function reloadClaims(userId: string) {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, isActive: true },
+    select: {
+      role: true,
+      memberships: {
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { garageId: true, role: true },
+      },
+    },
   });
+  if (!user) return null;
+  const membership = user.memberships[0];
   return {
+    role: user.role,
     garageId: membership?.garageId ?? null,
     garageRole: membership?.role ?? null,
   };
@@ -107,9 +124,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       const userId = asNullableString(claims["sub"]);
       if (trigger === "update" && userId) {
-        const membership = await loadMembership(userId);
-        claims["garageId"] = membership.garageId;
-        claims["garageRole"] = membership.garageRole;
+        const fresh = await reloadClaims(userId);
+        if (!fresh) {
+          // Account deactivated or removed: blank the subject so the session
+          // resolves as unauthenticated on the next request.
+          claims["sub"] = "";
+          return token;
+        }
+        claims["role"] = fresh.role;
+        claims["garageId"] = fresh.garageId;
+        claims["garageRole"] = fresh.garageRole;
       }
 
       return token;
@@ -123,8 +147,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const session = await auth();
     if (!session?.user?.id) return null;
     const { id, email, name, role, garageId, garageRole } = session.user;
+
+    // Enforce account status on every request. With a JWT session the token is
+    // valid until it expires, so without this check a user deactivated mid-
+    // session would keep access for up to SESSION_MAX_AGE_SECONDS. One indexed
+    // primary-key lookup is the cost of immediate revocation.
+    const active = await prisma.user.findFirst({
+      where: { id, isActive: true },
+      select: { id: true },
+    });
+    if (!active) return null;
+
     return { id, email, name, role, garageId, garageRole };
-  } catch (error) {
+  } catch {
     // If the session cookie is invalid, corrupted, or stale, fail gracefully as unauthenticated
     return null;
   }
