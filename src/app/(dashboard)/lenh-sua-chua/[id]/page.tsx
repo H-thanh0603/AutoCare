@@ -14,7 +14,7 @@ import { WorkTaskBoard } from "@/features/work-tasks/work-task-board";
 import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function RepairOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -105,12 +105,12 @@ export default async function RepairOrderDetailPage({ params }: { params: Promis
                 <input name="finding" placeholder="Phát hiện" className="rounded-md border p-2" />
               </div>
               <input name="recommendation" placeholder="Khuyến nghị" className="rounded-md border p-2" />
-              <Button type="submit">Lưu kiểm tra</Button>
+              <SubmitButton pendingText="Đang lưu…">Lưu kiểm tra</SubmitButton>
             </form>
           ) : (
             <form action={startInspectionFormAction}>
               <input type="hidden" name="repairOrderId" value={order.id} />
-              <Button type="submit">Bắt đầu kiểm tra</Button>
+              <SubmitButton>Bắt đầu kiểm tra</SubmitButton>
             </form>
           )}
         </CardContent>
@@ -130,7 +130,7 @@ export default async function RepairOrderDetailPage({ params }: { params: Promis
                 <input name="unitPrice" type="number" min="0" placeholder="Đơn giá" className="rounded-md border p-2" />
                 <input name="discountAmount" type="number" min="0" defaultValue="0" className="rounded-md border p-2" />
               </div>
-              <Button type="submit">Tạo báo giá nháp</Button>
+              <SubmitButton pendingText="Đang tạo…">Tạo báo giá nháp</SubmitButton>
             </form>
           )}
           {quotations.map((quotation) => (
@@ -143,9 +143,9 @@ export default async function RepairOrderDetailPage({ params }: { params: Promis
               {quotation.status === "DRAFT" && (
                 <form action={sendQuotationFormAction} className="mt-2">
                   <input type="hidden" name="quotationId" value={quotation.id} />
-                  <Button type="submit" size="sm">
+                  <SubmitButton size="sm" pendingText="Đang gửi…">
                     Gửi khách duyệt
-                  </Button>
+                  </SubmitButton>
                 </form>
               )}
             </div>

@@ -110,14 +110,24 @@ export async function getRepairOrderDetail(
 
 export async function listRepairOrders(
   garageId: string,
-  options: { statuses?: readonly RepairOrderStatus[]; take?: number } = {},
+  options: { statuses?: readonly RepairOrderStatus[]; search?: string; take?: number } = {},
   db: PrismaClientOrTx = prisma,
 ): Promise<RepairOrderListItem[]> {
-  const { statuses, take = 50 } = options;
+  const { statuses, search, take = 50 } = options;
+  const term = search?.trim();
   return db.repairOrder.findMany({
     where: {
       garageId,
       ...(statuses?.length ? { status: { in: [...statuses] } } : {}),
+      ...(term
+        ? {
+            OR: [
+              { code: { contains: term, mode: "insensitive" } },
+              { vehicle: { licensePlate: { contains: term, mode: "insensitive" } } },
+              { customer: { name: { contains: term, mode: "insensitive" } } },
+            ],
+          }
+        : {}),
     },
     select: listSelect,
     orderBy: { receivedAt: "desc" },

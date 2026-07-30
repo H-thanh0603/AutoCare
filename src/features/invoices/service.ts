@@ -247,6 +247,12 @@ export async function recordPayment(input: {
       throw new BusinessRuleError("Không thể ghi nhận thanh toán cho hóa đơn đã hủy hoặc đã hoàn tiền.");
     }
 
+    // A draft invoice is not yet a financial document; it must be issued before
+    // any payment/deposit can be recorded against it, so the ledger stays auditable.
+    if (invoice.status === InvoiceStatus.DRAFT) {
+      throw new BusinessRuleError("Cần phát hành hóa đơn trước khi ghi nhận thanh toán.");
+    }
+
     let newPaidAmount = invoice.paidAmount;
     if (type === PaymentType.PAYMENT || type === PaymentType.DEPOSIT) {
       newPaidAmount = addMoney(invoice.paidAmount, amount);

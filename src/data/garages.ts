@@ -74,6 +74,7 @@ export async function updateGarageAppointmentSettings(
       settings: {
         ...existingSettings,
         appointmentSlotMinutes: settings.appointmentSlotMinutes,
+        maxConcurrentPerSlot: settings.maxConcurrentPerSlot,
         workingHours: Object.fromEntries(
           Object.entries(settings.workingHours).map(([day, hours]) => [
             day,

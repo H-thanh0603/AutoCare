@@ -17,7 +17,7 @@ export default async function NewAppointmentPage() {
         </div>
         <h1 className="text-2xl sm:text-3xl font-black">Đặt Lịch Hẹn Bảo Dưỡng / Sửa Chữa</h1>
         <p className="text-blue-100 text-xs sm:text-sm font-medium">
-          Chọn xe, Gara mong muốn và khung giờ phù hợp. Gara sẽ kiểm tra trùng lịch tự động và gửi phản hồi xác nhận ngay cho bạn.
+          Chọn xe, Gara mong muốn và khung giờ phù hợp. Hệ thống đảm bảo xe của bạn không bị đặt trùng hai lịch cùng lúc; Gara sẽ xác nhận lại khung giờ sau khi tiếp nhận yêu cầu.
         </p>
       </div>
 

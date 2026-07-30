@@ -16,9 +16,11 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ "tiep-tuc"?: string }>;
+  searchParams: Promise<{ "tiep-tuc"?: string; "tao-tk"?: string }>;
 }) {
-  const next = safeInternalPath((await searchParams)["tiep-tuc"]);
+  const params = await searchParams;
+  const next = safeInternalPath(params["tiep-tuc"]);
+  const justRegistered = params["tao-tk"] === "1";
   const user = await getSessionUser();
   if (user) {
     redirect(next ?? (isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan"));
@@ -51,6 +53,13 @@ export default async function LoginPage({
         </div>
 
         <LoginForm next={next ?? undefined} />
+
+        {justRegistered ? (
+          <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-xs font-semibold text-emerald-800">
+            Tài khoản đã được tạo thành công. Vui lòng đăng nhập để tiếp tục.
+          </p>
+        ) : null}
+
 
         <div className="text-center space-y-2 text-xs text-slate-600 font-medium">
           <p>

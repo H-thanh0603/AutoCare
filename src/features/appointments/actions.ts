@@ -123,6 +123,7 @@ export async function updateAppointmentSettingsFormAction(formData: FormData): P
   );
   const settings = parseAppointmentSettings({
     appointmentSlotMinutes: Number(formData.get("appointmentSlotMinutes")),
+    maxConcurrentPerSlot: Number(formData.get("maxConcurrentPerSlot") ?? 0),
     workingHours,
   });
   await updateGarageAppointmentSettings(garageId, settings);
