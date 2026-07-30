@@ -17,6 +17,7 @@ import { credentialsSchema, registerSchema } from "@/lib/auth-schema";
 import { signIn, signOut } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
 import { RATE_LIMITS, checkRateLimit, resetRateLimit, resolveClientIp } from "@/lib/rate-limit";
+import { safeInternalPath } from "@/lib/utils";
 
 import { registerCustomer } from "./service";
 
@@ -87,11 +88,13 @@ export async function loginAction(
 
     // Destination comes from the account role, never from the form. The client
     // cannot steer itself into the dashboard, and this action need not read the
-    // cookie that Auth.js has only just attached to its response.
-    return {
-      redirectTo:
-        account?.role === UserRole.CUSTOMER ? "/tai-khoan" : "/bang-dieu-khien",
-    };
+    // cookie that Auth.js has only just attached to its response. A validated
+    // `next` (from the `tiep-tuc` param) takes precedence so the user returns to
+    // the page they originally requested.
+    const next = safeInternalPath(formData.get("next")?.toString());
+    const roleHome =
+      account?.role === UserRole.CUSTOMER ? "/tai-khoan" : "/bang-dieu-khien";
+    return { redirectTo: next ?? roleHome };
   });
 }
 

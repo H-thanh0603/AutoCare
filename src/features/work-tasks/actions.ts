@@ -44,6 +44,7 @@ export async function updateWorkTaskStatusAction(
       status,
       cancelReason,
       actorUserId: user.id,
+      actorGarageRole: user.garageRole,
     });
   });
 }
@@ -58,6 +59,7 @@ export async function addWorkLogAction(workTaskId: string, note: string, minutes
       userId: user.id,
       note,
       minutesSpent,
+      actorGarageRole: user.garageRole,
     });
   });
 }

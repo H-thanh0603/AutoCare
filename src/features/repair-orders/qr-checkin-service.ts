@@ -3,13 +3,18 @@ import { NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { createWalkInRepairOrder } from "./service";
 
+/**
+ * Resolves a scanned QR payload (or license plate / VIN) to a vehicle that is
+ * currently owned by a customer of THIS garage. A vehicle that exists but is
+ * not registered here is treated as "not found" for this garage, so QR check-in
+ * can never silently pull a vehicle out of another garage's tenant scope.
+ */
 export async function lookupVehicleByQrCode(garageId: string, qrData: string) {
   const searchTerm = parseVehicleQrCodeData(qrData);
   if (!searchTerm) {
     throw new ValidationError("Mã QR không đúng định dạng AutoCare.");
   }
 
-  // 1. Search vehicle by ID or License Plate or VIN
   const vehicle = await prisma.vehicle.findFirst({
     where: {
       OR: [
@@ -18,10 +23,18 @@ export async function lookupVehicleByQrCode(garageId: string, qrData: string) {
         { vin: { equals: searchTerm, mode: "insensitive" } },
       ],
       deletedAt: null,
+      // Tenant scope: the vehicle must have a current ownership in this garage.
+      ownerships: {
+        some: {
+          isCurrent: true,
+          endedAt: null,
+          customer: { garageId, deletedAt: null },
+        },
+      },
     },
     include: {
       ownerships: {
-        where: { isCurrent: true, endedAt: null },
+        where: { isCurrent: true, endedAt: null, customer: { garageId, deletedAt: null } },
         include: { customer: { select: { id: true, name: true, phone: true, email: true, garageId: true } } },
       },
       repairOrders: {
@@ -40,7 +53,9 @@ export async function lookupVehicleByQrCode(garageId: string, qrData: string) {
   });
 
   if (!vehicle) {
-    throw new NotFoundError(`Không tìm thấy xe ứng với thông tin QR: "${searchTerm}".`);
+    throw new NotFoundError(
+      `Không tìm thấy xe của garage ứng với thông tin "${searchTerm}". Nếu là xe mới, hãy tiếp nhận qua luồng khách vãng lai.`,
+    );
   }
 
   const currentOwner = vehicle.ownerships[0]?.customer ?? null;
@@ -60,84 +75,29 @@ export async function lookupVehicleByQrCode(garageId: string, qrData: string) {
 export async function instantCheckinByQrCode(input: {
   garageId: string;
   qrData: string;
+  isGarageManager: boolean;
   mileageKm?: number;
   customerNotes?: string;
   actorUserId: string;
 }) {
-  const { garageId, qrData, mileageKm, customerNotes, actorUserId } = input;
+  const { garageId, qrData, isGarageManager, mileageKm, customerNotes, actorUserId } = input;
   const vehicleInfo = await lookupVehicleByQrCode(garageId, qrData);
 
-  // Mileage handling: ensure nextKm >= previousKm to pass mileage validation rules
+  // The vehicle is guaranteed to be owned in this garage (see lookup), so we
+  // hand straight off to the walk-in flow. The odometer value is passed through
+  // untouched: createWalkInRepairOrder -> validateMileageChange decides whether
+  // a decrease is allowed based on the actor's real role, instead of silently
+  // clamping or forging an override reason.
   const currentKm = vehicleInfo.currentKm ?? 0;
   const inputMileage = mileageKm && mileageKm > 0 ? mileageKm : currentKm;
-  const finalMileage = Math.max(inputMileage, currentKm);
-  const overrideReason = inputMileage < currentKm ? "Tiếp nhận 1-Touch bằng QR Code" : null;
 
-  // Ensure Vehicle Ownership exists in current garageId for seamless check-in
-  await prisma.$transaction(async (tx) => {
-    const existingOwnership = await tx.vehicleOwnership.findFirst({
-      where: {
-        vehicleId: vehicleInfo.vehicleId,
-        isCurrent: true,
-        endedAt: null,
-        customer: { garageId, deletedAt: null },
-      },
-    });
-
-    if (!existingOwnership) {
-      const ownerPhone = vehicleInfo.owner?.phone?.trim() || `09${Math.floor(10000000 + Math.random() * 90000000)}`;
-
-      // Check if a customer with this phone already exists in garageId
-      let customer = await tx.customer.findFirst({
-        where: { garageId, phone: ownerPhone, deletedAt: null },
-      });
-
-      if (!customer) {
-        // Fallback: pick any active customer in garageId or create a new unique one
-        customer = await tx.customer.findFirst({
-          where: { garageId, deletedAt: null },
-          orderBy: { createdAt: "asc" },
-        });
-      }
-
-      if (!customer) {
-        customer = await tx.customer.create({
-          data: {
-            garageId,
-            name: vehicleInfo.owner?.name ?? "Khách Vãng Lai (QR Checkin)",
-            phone: ownerPhone,
-            email: vehicleInfo.owner?.email ?? null,
-            note: "Khách tiếp nhận bằng QR Code 1-Touch.",
-          },
-        });
-      }
-
-      // Close previous current ownerships if any
-      await tx.vehicleOwnership.updateMany({
-        where: { vehicleId: vehicleInfo.vehicleId, isCurrent: true },
-        data: { isCurrent: false, endedAt: new Date() },
-      });
-
-      // Create new current ownership in this garage
-      await tx.vehicleOwnership.create({
-        data: {
-          vehicleId: vehicleInfo.vehicleId,
-          customerId: customer.id,
-          isCurrent: true,
-          startedAt: new Date(),
-        },
-      });
-    }
-  });
-
-  // Create Walk-in Repair Order
-  const order = await createWalkInRepairOrder(garageId, actorUserId, true, {
+  const order = await createWalkInRepairOrder(garageId, actorUserId, isGarageManager, {
     vehicleId: vehicleInfo.vehicleId,
-    mileageKm: finalMileage,
+    mileageKm: inputMileage,
     fuelLevel: null,
     initialNote: customerNotes ?? "Tiếp nhận 1-Touch bằng quét mã QR Code.",
     intakeChecklist: {},
-    overrideReason,
+    overrideReason: null,
   });
 
   return {

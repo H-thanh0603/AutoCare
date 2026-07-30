@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 
 import { getInvoices } from "@/features/invoices/service";
+import { InvoiceActions } from "@/features/invoices/invoice-actions";
 import { requireStaffPermissionPage } from "@/features/auth/guards";
 import { invoiceStatusLabel } from "@/features/repair-orders/labels";
+import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 
 export const metadata: Metadata = {
@@ -29,8 +31,10 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
 });
 
 export default async function InvoicesPage() {
-  const { garageId } = await requireStaffPermissionPage("/hoa-don", "invoice:read");
+  const { user, garageId } = await requireStaffPermissionPage("/hoa-don", "invoice:read");
   const invoices = await getInvoices(garageId);
+  const canInvoice = can(user, "invoice:write");
+  const canPay = can(user, "payment:write");
 
   let totalCollectedVnd = 0;
   let totalPendingVnd = 0;
@@ -150,6 +154,14 @@ export default async function InvoicesPage() {
                     </div>
                   </div>
                 )}
+
+                <InvoiceActions
+                  invoiceId={inv.id}
+                  status={inv.status}
+                  balance={dueBalance}
+                  canInvoice={canInvoice}
+                  canPay={canPay}
+                />
               </div>
             );
           })

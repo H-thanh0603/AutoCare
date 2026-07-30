@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import { requireStaffPermissionPage } from "@/features/auth/guards";
+import { InventoryManager } from "@/features/inventory/inventory-manager";
+import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 
@@ -29,7 +31,7 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
 });
 
 export default async function InventoryPage() {
-  const { garageId } = await requireStaffPermissionPage("/kho", "inventory:read");
+  const { user, garageId } = await requireStaffPermissionPage("/kho", "inventory:read");
 
   const [parts, recentTx] = await Promise.all([
     prisma.part.findMany({
@@ -92,6 +94,13 @@ export default async function InventoryPage() {
           <span className="text-2xl font-black text-amber-600 font-mono">{lowStockCount} Mặt hàng</span>
         </div>
       </div>
+
+      {/* Inventory management actions */}
+      <InventoryManager
+        parts={parts.map((p) => ({ id: p.id, name: p.name, sku: p.sku, unit: p.unit }))}
+        canWrite={can(user, "part:write")}
+        canAdjust={can(user, "inventory:adjust")}
+      />
 
       {/* Parts Table */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">

@@ -1,6 +1,6 @@
-import { WorkTaskStatus } from "@/generated/prisma/enums";
+import { GarageRole, WorkTaskStatus } from "@/generated/prisma/enums";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
-import { NotFoundError, ValidationError } from "@/lib/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { PrismaClientOrTx, prisma } from "@/lib/prisma";
 import { assertRepairOrderTransition, assertWorkTaskTransition } from "@/lib/transitions";
 
@@ -116,8 +116,9 @@ export async function updateWorkTaskStatus(input: {
   status: WorkTaskStatus;
   cancelReason?: string | null;
   actorUserId: string;
+  actorGarageRole?: GarageRole | null;
 }): Promise<void> {
-  const { garageId, workTaskId, status, cancelReason, actorUserId } = input;
+  const { garageId, workTaskId, status, cancelReason, actorUserId, actorGarageRole } = input;
 
   await prisma.$transaction(async (tx) => {
     const task = await tx.workTask.findFirst({
@@ -125,6 +126,12 @@ export async function updateWorkTaskStatus(input: {
       include: { repairOrder: { select: { id: true, status: true } } },
     });
     if (!task) throw new NotFoundError("Không tìm thấy hạng mục công việc.");
+
+    // Row-level rule: a technician may only progress tasks assigned to them.
+    // Managers (work-task:write) may act on any task in the garage.
+    if (actorGarageRole === GarageRole.TECHNICIAN && task.assignedToId !== actorUserId) {
+      throw new ForbiddenError("Bạn chỉ có thể cập nhật công việc được phân công cho mình.");
+    }
 
     assertWorkTaskTransition(task.status, status);
 
@@ -188,8 +195,9 @@ export async function addWorkLog(input: {
   userId: string;
   note: string;
   minutesSpent?: number | null;
+  actorGarageRole?: GarageRole | null;
 }) {
-  const { garageId, workTaskId, userId, note, minutesSpent } = input;
+  const { garageId, workTaskId, userId, note, minutesSpent, actorGarageRole } = input;
   const trimmedNote = note.trim();
   if (!trimmedNote) {
     throw new ValidationError("Ghi chú công việc không được để trống.");
@@ -202,6 +210,11 @@ export async function addWorkLog(input: {
     where: { id: workTaskId, garageId },
   });
   if (!task) throw new NotFoundError("Không tìm thấy hạng mục công việc.");
+
+  // A technician may only log work on tasks assigned to them.
+  if (actorGarageRole === GarageRole.TECHNICIAN && task.assignedToId !== userId) {
+    throw new ForbiddenError("Bạn chỉ có thể ghi nhật ký cho công việc được phân công cho mình.");
+  }
 
   return prisma.workLog.create({
     data: {

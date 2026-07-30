@@ -19,7 +19,9 @@ import { listCustomerOptions } from "@/data/customers";
 import { getVehicleDetail } from "@/data/vehicles";
 import { requireStaffPermissionPage } from "@/features/auth/guards";
 import { getVehicleHealthOverview } from "@/features/vehicle-health/service";
+import { ShareLinkManager } from "@/features/vehicle-health/share-link-manager";
 import { VehicleHistoryForms } from "@/features/vehicles/vehicle-history-forms";
+import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +46,7 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
   }
 
   const canWrite = user.garageRole === "RECEPTIONIST" || user.garageRole === "GARAGE_MANAGER";
+  const canManageShare = can(user, "share-link:manage");
   const owners = canWrite ? await listCustomerOptions(garageId) : [];
 
   return (
@@ -179,6 +182,10 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <VehicleHistoryForms vehicleId={vehicle.id} owners={owners} />
         </div>
+      )}
+
+      {canManageShare && (
+        <ShareLinkManager vehicleId={vehicle.id} links={healthOverview.shareLinks} />
       )}
 
       {/* Vehicle Timeline */}

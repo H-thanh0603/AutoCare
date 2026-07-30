@@ -161,6 +161,10 @@ const GARAGE_MANAGER_PERMISSIONS: readonly Permission[] = [
 /**
  * Customers act on their own vehicles only. Ownership is verified separately by
  * each module; this map just says which verbs are reachable at all.
+ *
+ * Note: share-link creation/revocation is staff-only (it is garage-scoped), so
+ * it is intentionally NOT listed here — the customer-facing actions all resolve
+ * a garage from the session.
  */
 const CUSTOMER_PERMISSIONS: readonly Permission[] = [
   "vehicle:read",
@@ -175,7 +179,6 @@ const CUSTOMER_PERMISSIONS: readonly Permission[] = [
   "invoice:read",
   "payment:read",
   "vehicle-health:read",
-  "share-link:manage",
 ];
 
 const GARAGE_ROLE_PERMISSIONS: Record<GarageRole, readonly Permission[]> = {

@@ -191,7 +191,7 @@ export default async function PortalPage() {
                 key={order.id}
                 className="bg-white border border-slate-200 hover:border-indigo-500/50 rounded-3xl p-6 shadow-sm hover:shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
               >
-                <div className="space-y-1.5">
+              <div className="space-y-1.5">
                   <div className="flex items-center gap-3">
                     <span className="font-mono font-black text-slate-900 text-base">{order.code}</span>
                     <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
@@ -205,6 +205,15 @@ export default async function PortalPage() {
                     Ngày tiếp nhận: {DATE_TIME_FORMATTER.format(new Date(order.receivedAt))}
                   </p>
                 </div>
+
+                {order.latestQuotation ? (
+                  <Link
+                    href={`/tai-khoan/bao-gia/${order.latestQuotation.id}`}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 shrink-0"
+                  >
+                    Xem &amp; duyệt báo giá <ChevronRight className="size-4" />
+                  </Link>
+                ) : null}
               </div>
             ))}
           </div>

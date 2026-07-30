@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { receptionSchema } from "@/features/repair-orders/schema";
-import { checkInAppointment, createWalkInRepairOrder } from "@/features/repair-orders/service";
+import {
+  checkInAppointment,
+  createWalkInRepairOrder,
+  deliverVehicle,
+  failQualityCheck,
+  passQualityCheck,
+} from "@/features/repair-orders/service";
 import { getSessionUser } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
@@ -53,4 +59,31 @@ export async function checkInAppointmentFormAction(formData: FormData): Promise<
 
 export async function createWalkInRepairOrderFormAction(formData: FormData): Promise<void> {
   await createWalkInRepairOrderAction(formData);
+}
+
+export async function passQualityCheckAction(repairOrderId: string, note?: string): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "quality-check:write");
+    const { garageId } = requireGarageScope(user);
+    await passQualityCheck({ garageId, repairOrderId, actorUserId: user.id, note });
+    revalidatePath(`/lenh-sua-chua/${repairOrderId}`);
+  });
+}
+
+export async function failQualityCheckAction(repairOrderId: string, reason: string): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "quality-check:write");
+    const { garageId } = requireGarageScope(user);
+    await failQualityCheck({ garageId, repairOrderId, actorUserId: user.id, reason });
+    revalidatePath(`/lenh-sua-chua/${repairOrderId}`);
+  });
+}
+
+export async function deliverVehicleAction(repairOrderId: string): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "repair-order:deliver");
+    const { garageId } = requireGarageScope(user);
+    await deliverVehicle({ garageId, repairOrderId, actorUserId: user.id });
+    revalidatePath(`/lenh-sua-chua/${repairOrderId}`);
+  });
 }

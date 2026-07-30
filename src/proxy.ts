@@ -86,6 +86,7 @@ export default auth((request) => {
   // the framework's own inline scripts; then also set CSP on the response.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("content-security-policy", csp);
 
   const pass = () =>

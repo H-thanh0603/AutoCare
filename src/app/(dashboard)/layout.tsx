@@ -8,6 +8,7 @@
 
 import { Car } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 import { getGarageById } from "@/data/garages";
@@ -22,7 +23,8 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, garageId, garageRole } = await requireStaffPage("/bang-dieu-khien");
+  const pathname = (await headers()).get("x-pathname") ?? "/bang-dieu-khien";
+  const { user, garageId, garageRole } = await requireStaffPage(pathname);
   const garage = await getGarageById(garageId);
   const items = navFor(user).map(({ href, label }) => ({ href, label }));
 
