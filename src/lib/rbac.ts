@@ -185,6 +185,9 @@ const GARAGE_ROLE_PERMISSIONS: Record<GarageRole, readonly Permission[]> = {
   [GarageRole.GARAGE_MANAGER]: GARAGE_MANAGER_PERMISSIONS,
 };
 
+/** Shared stable reference so a role with no permissions never allocates. */
+const NO_PERMISSIONS: readonly Permission[] = [];
+
 export function permissionsFor(user: SessionUser): readonly Permission[] {
   if (user.role === UserRole.CUSTOMER) {
     return CUSTOMER_PERMISSIONS;
@@ -194,12 +197,29 @@ export function permissionsFor(user: SessionUser): readonly Permission[] {
     // resolve to a defined permission set rather than an empty one.
     return GARAGE_MANAGER_PERMISSIONS;
   }
-  return user.garageRole ? GARAGE_ROLE_PERMISSIONS[user.garageRole] : [];
+  return user.garageRole ? GARAGE_ROLE_PERMISSIONS[user.garageRole] : NO_PERMISSIONS;
+}
+
+/**
+ * Set view of each permission list, built once per list and keyed by reference.
+ * The lists are module constants, so this turns `can()` into an O(1) lookup
+ * instead of scanning the array on every check.
+ */
+const permissionSetCache = new WeakMap<readonly Permission[], Set<Permission>>();
+
+function permissionSetFor(user: SessionUser): Set<Permission> {
+  const list = permissionsFor(user);
+  let set = permissionSetCache.get(list);
+  if (!set) {
+    set = new Set(list);
+    permissionSetCache.set(list, set);
+  }
+  return set;
 }
 
 export function can(user: SessionUser | null, permission: Permission): boolean {
   if (!user) return false;
-  return permissionsFor(user).includes(permission);
+  return permissionSetFor(user).has(permission);
 }
 
 export function requirePermission(

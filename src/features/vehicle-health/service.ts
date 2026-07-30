@@ -9,6 +9,15 @@ import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { PrismaClientOrTx, prisma } from "@/lib/prisma";
 
+/**
+ * Caps on the history lists so a vehicle with a long service life cannot make
+ * these reads load an unbounded number of rows. Ordered newest-first, so the
+ * cap keeps the most recent records — enough for every current view.
+ */
+const MAX_TIMELINE_EVENTS = 200;
+const MAX_MAINTENANCE_RECORDS = 200;
+const MAX_WARRANTIES = 200;
+
 export async function syncVehicleHealthFromRepairOrder(
   repairOrderId: string,
   tx: PrismaClientOrTx = prisma,
@@ -64,13 +73,14 @@ export async function syncVehicleHealthFromRepairOrder(
     },
   });
 
-  // 3. Create default Warranties for completed parts/services
-  for (const task of order.workTasks) {
-    const warrantyMonths = 6;
-    const expiresAt = new Date(now.getTime() + warrantyMonths * 30 * 86400 * 1000);
+  // 3. Create default Warranties for completed parts/services in one write.
+  const warrantyMonths = 6;
+  const expiresAt = new Date(now.getTime() + warrantyMonths * 30 * 86400 * 1000);
+  const baseMileage = order.mileageKm ?? order.vehicle.currentKm ?? 0;
 
-    await tx.warranty.create({
-      data: {
+  if (order.workTasks.length > 0) {
+    await tx.warranty.createMany({
+      data: order.workTasks.map((task) => ({
         vehicleId: order.vehicleId,
         garageId: order.garageId,
         repairOrderId: order.id,
@@ -79,9 +89,9 @@ export async function syncVehicleHealthFromRepairOrder(
         terms: "Bảo hành tiêu chuẩn garage 6 tháng / 10.000 km",
         startsAt: now,
         expiresAt,
-        mileageLimitKm: (order.mileageKm ?? order.vehicle.currentKm ?? 0) + 10000,
+        mileageLimitKm: baseMileage + 10000,
         isActive: true,
-      },
+      })),
     });
   }
 
@@ -164,10 +174,10 @@ export async function getPublicVehicleHealth(token: string) {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: shareLink.vehicleId },
     include: {
-      timelineEvents: { orderBy: { occurredAt: "desc" } },
-      maintenance: { orderBy: { performedAt: "desc" } },
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
       systemStatuses: { orderBy: { updatedAt: "desc" } },
-      warranties: { where: { isActive: true }, orderBy: { startsAt: "desc" } },
+      warranties: { where: { isActive: true }, orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
     },
   });
 
@@ -315,11 +325,42 @@ export async function getVehicleHealthOverview(vehicleId: string) {
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: vehicleId },
     include: {
-      timelineEvents: { orderBy: { occurredAt: "desc" } },
-      maintenance: { orderBy: { performedAt: "desc" } },
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
       systemStatuses: { orderBy: { updatedAt: "desc" } },
-      warranties: { orderBy: { startsAt: "desc" } },
+      warranties: { orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
       shareLinks: { where: { revokedAt: null, expiresAt: { gt: new Date() } } },
+    },
+  });
+
+  if (!vehicle) throw new NotFoundError("Không tìm thấy thông tin xe.");
+  return vehicle;
+}
+
+/**
+ * Vehicle health for the customer portal, scoped to the requesting account in a
+ * single query: the vehicle must be currently owned by a customer record linked
+ * to `userId`. This both authorizes the read and returns the data, so callers no
+ * longer load the whole vehicle list just to check ownership.
+ */
+export async function getPortalVehicleHealth(userId: string, vehicleId: string) {
+  const vehicle = await prisma.vehicle.findFirst({
+    where: {
+      id: vehicleId,
+      deletedAt: null,
+      ownerships: {
+        some: {
+          isCurrent: true,
+          endedAt: null,
+          customer: { userId, deletedAt: null },
+        },
+      },
+    },
+    include: {
+      timelineEvents: { orderBy: { occurredAt: "desc" }, take: MAX_TIMELINE_EVENTS },
+      maintenance: { orderBy: { performedAt: "desc" }, take: MAX_MAINTENANCE_RECORDS },
+      systemStatuses: { orderBy: { updatedAt: "desc" } },
+      warranties: { orderBy: { startsAt: "desc" }, take: MAX_WARRANTIES },
     },
   });
 

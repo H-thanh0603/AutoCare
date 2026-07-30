@@ -21,9 +21,8 @@ import {
   Zap,
 } from "lucide-react";
 
-import { listPortalVehicles } from "@/data/portal";
 import { requireUserPage } from "@/features/auth/guards";
-import { getVehicleHealthOverview } from "@/features/vehicle-health/service";
+import { getPortalVehicleHealth } from "@/features/vehicle-health/service";
 import { formatVnd } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 
@@ -43,16 +42,9 @@ export default async function PortalVehicleDetailPage({ params }: { params: Prom
   const user = await requireUserPage("/tai-khoan");
   const vehicleId = (await params).id;
 
-  const myVehicles = await listPortalVehicles(user.id);
-  const isMine = myVehicles.some((v) => v.id === vehicleId);
-
-  if (!isMine) {
-    notFound();
-  }
-
   let vehicle;
   try {
-    vehicle = await getVehicleHealthOverview(vehicleId);
+    vehicle = await getPortalVehicleHealth(user.id, vehicleId);
   } catch {
     notFound();
   }
