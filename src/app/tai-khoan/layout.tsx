@@ -1,4 +1,4 @@
-import { Bell, Car, ChevronRight, Home, LogOut, User, Wrench } from "lucide-react";
+import { Bell, Car, ChevronRight, Home, LogOut, Receipt, User, Wrench } from "lucide-react";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -43,6 +43,9 @@ export default async function PortalLayout({ children }: { children: ReactNode }
             </Link>
             <Link href="/tai-khoan" className="text-blue-600 font-extrabold flex items-center gap-1">
               <Car className="size-3.5" /> Xe & Lịch hẹn
+            </Link>
+            <Link href="/tai-khoan/hoa-don" className="hover:text-blue-600 transition-colors flex items-center gap-1">
+              <Receipt className="size-3.5" /> Hóa đơn
             </Link>
             <Link href="/tai-khoan/thong-bao" className="hover:text-blue-600 transition-colors flex items-center gap-1">
               <Bell className="size-3.5" /> Thông báo

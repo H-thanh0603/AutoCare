@@ -7,11 +7,14 @@ export interface WorkingHours {
 
 export interface AppointmentSettings {
   appointmentSlotMinutes: number;
+  /** Max concurrent PENDING/CONFIRMED appointments per slot; 0 = unlimited. */
+  maxConcurrentPerSlot: number;
   workingHours: Partial<Record<0 | 1 | 2 | 3 | 4 | 5 | 6, WorkingHours>>;
 }
 
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   appointmentSlotMinutes: 60,
+  maxConcurrentPerSlot: 0,
   workingHours: {
     1: { open: "08:00", close: "17:00" },
     2: { open: "08:00", close: "17:00" },
@@ -97,9 +100,15 @@ export function parseAppointmentSettings(value: unknown): AppointmentSettings {
     };
   }
 
-  return { appointmentSlotMinutes, workingHours };
-}
+  const maxConcurrentPerSlot =
+    typeof value.maxConcurrentPerSlot === "number" &&
+    Number.isInteger(value.maxConcurrentPerSlot) &&
+    value.maxConcurrentPerSlot >= 0
+      ? value.maxConcurrentPerSlot
+      : 0;
 
+  return { appointmentSlotMinutes, maxConcurrentPerSlot, workingHours };
+}
 export function assertAppointmentSlot(
   settings: AppointmentSettings,
   scheduledAt: Date,

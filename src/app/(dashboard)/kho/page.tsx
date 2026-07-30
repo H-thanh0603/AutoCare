@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -30,8 +31,13 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
   minute: "2-digit",
 });
 
-export default async function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ loc?: string }>;
+}) {
   const { user, garageId } = await requireStaffPermissionPage("/kho", "inventory:read");
+  const lowStockOnly = (await searchParams).loc === "ton-thap";
 
   const [parts, recentTx] = await Promise.all([
     prisma.part.findMany({
@@ -59,6 +65,10 @@ export default async function InventoryPage() {
       lowStockCount++;
     }
   }
+
+  const displayedParts = lowStockOnly
+    ? parts.filter((p) => p.quantityInStock <= p.lowStockThreshold)
+    : parts;
 
   return (
     <div className="space-y-8">
@@ -89,10 +99,14 @@ export default async function InventoryPage() {
           <span className="text-xl font-black text-emerald-600 font-mono">{formatVnd(totalRetailValueVnd)}</span>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
+        <Link
+          href={lowStockOnly ? "/kho" : "/kho?loc=ton-thap"}
+          className={`bg-white border rounded-2xl p-5 shadow-sm space-y-1 transition-colors ${lowStockOnly ? "border-amber-400 ring-1 ring-amber-300" : "border-slate-200 hover:border-amber-300"}`}
+        >
           <span className="text-xs font-bold text-amber-600 uppercase block">Cảnh báo tồn kho thấp</span>
           <span className="text-2xl font-black text-amber-600 font-mono">{lowStockCount} Mặt hàng</span>
-        </div>
+          <span className="text-[11px] text-slate-400 block">{lowStockOnly ? "Đang lọc — bấm để xem tất cả" : "Bấm để lọc hàng tồn thấp"}</span>
+        </Link>
       </div>
 
       {/* Inventory management actions */}
@@ -107,15 +121,15 @@ export default async function InventoryPage() {
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
             <Boxes className="size-5 text-blue-600" />
-            <span>Danh Sách Tồn Kho Phụ Tùng ({parts.length})</span>
+            <span>Danh Sách Tồn Kho Phụ Tùng ({displayedParts.length})</span>
           </h2>
         </div>
 
-        {parts.length === 0 ? (
+        {displayedParts.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-sm space-y-2">
             <Package className="size-10 text-slate-400 mx-auto" />
-            <p className="font-bold text-slate-800">Kho hàng đang trống</p>
-            <p className="text-xs text-slate-500">Chưa tạo mã phụ tùng nào.</p>
+            <p className="font-bold text-slate-800">{lowStockOnly ? "Không có mặt hàng tồn thấp" : "Kho hàng đang trống"}</p>
+            <p className="text-xs text-slate-500">{lowStockOnly ? "Tất cả phụ tùng đều đủ hàng." : "Chưa tạo mã phụ tùng nào."}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -132,7 +146,7 @@ export default async function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {parts.map((p) => {
+                {displayedParts.map((p) => {
                   const isLowStock = p.quantityInStock <= p.lowStockThreshold;
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">

@@ -16,6 +16,7 @@ import {
 import { listCustomers } from "@/data/customers";
 import { requireStaffPermissionPage } from "@/features/auth/guards";
 import { PageHeader } from "@/features/dashboard/page-shell";
+import { can } from "@/lib/rbac";
 
 export const metadata: Metadata = { title: "Khách hàng · AutoCare" };
 
@@ -27,7 +28,7 @@ export default async function CustomersPage({
   const { user, garageId } = await requireStaffPermissionPage("/khach-hang", "customer:read");
   const q = (await searchParams).q?.trim() ?? "";
   const customers = await listCustomers(garageId, { search: q || undefined, take: 50 });
-  const canWrite = user.garageRole === "RECEPTIONIST" || user.garageRole === "GARAGE_MANAGER";
+  const canWrite = can(user, "customer:write");
 
   return (
     <div className="space-y-6">

@@ -322,7 +322,7 @@ export async function decideQuotationItemAsManager(
 ): Promise<void> {
   const managerReason = input.managerReason.trim();
   if (managerReason.length < 10) {
-    throw new ValidationError("Manager reason must be at least 10 characters.");
+    throw new ValidationError("Lý do của quản lý phải có ít nhất 10 ký tự.");
   }
 
   await prisma.$transaction(async (tx) => {

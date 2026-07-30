@@ -1,12 +1,21 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 
 import { getPublicVehicleHealth } from "@/features/vehicle-health/service";
+import { AppError } from "@/lib/errors";
 import { RATE_LIMITS, checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
 
 /** Best-effort client IP for rate limiting the unauthenticated share endpoint. */
 async function publicClientIp(): Promise<string> {
   const headerList = await headers();
   return resolveClientIp(headerList);
+}
+
+interface ErrorInfo {
+  icon: string;
+  heading: string;
+  message: string;
+  hint?: string;
 }
 
 export default async function PublicVehicleHealthPage({
@@ -16,30 +25,66 @@ export default async function PublicVehicleHealthPage({
 }) {
   const { token } = await params;
   let health;
-  let errorMsg: string | null = null;
+  let errorInfo: ErrorInfo | null = null;
 
   const ip = await publicClientIp();
   const limit = await checkRateLimit({ key: `public-share:${ip}`, ...RATE_LIMITS.PUBLIC_SHARE });
 
   if (!limit.ok) {
-    errorMsg = `Bạn đã truy cập quá nhiều lần. Vui lòng thử lại sau ${limit.retryAfterSeconds} giây.`;
+    errorInfo = {
+      icon: "⏳",
+      heading: "Bạn truy cập quá nhiều lần",
+      message: `Vui lòng thử lại sau ${limit.retryAfterSeconds} giây.`,
+    };
   } else {
     try {
       health = await getPublicVehicleHealth(token);
     } catch (err) {
-      errorMsg = err instanceof Error ? err.message : "Không thể tải hồ sơ xe.";
+      if (err instanceof AppError && err.code === "NOT_FOUND") {
+        errorInfo = {
+          icon: "🔍",
+          heading: "Liên kết không tồn tại",
+          message: err.message,
+          hint: "Vui lòng kiểm tra lại đường dẫn được chia sẻ.",
+        };
+      } else if (err instanceof AppError && err.code === "BUSINESS_RULE_VIOLATION") {
+        errorInfo = {
+          icon: "🔒",
+          heading: "Liên kết không còn hiệu lực",
+          message: err.message,
+          hint: "Hãy liên hệ garage để được cấp liên kết chia sẻ mới.",
+        };
+      } else {
+        errorInfo = {
+          icon: "!",
+          heading: "Không thể truy cập hồ sơ xe",
+          message: err instanceof Error ? err.message : "Đã có lỗi xảy ra.",
+        };
+      }
     }
   }
 
-  if (errorMsg || !health) {
+  if (errorInfo || !health) {
+    const info: ErrorInfo = errorInfo ?? {
+      icon: "!",
+      heading: "Không thể truy cập hồ sơ xe",
+      message: "Không tìm thấy dữ liệu.",
+    };
     return (
       <main className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-xl p-6 text-center shadow-xl">
           <div className="w-12 h-12 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-            !
+            {info.icon}
           </div>
-          <h1 className="text-xl font-bold text-slate-100 mb-2">Không thể truy cập hồ sơ xe</h1>
-          <p className="text-slate-400 text-sm mb-6">{errorMsg}</p>
+          <h1 className="text-xl font-bold text-slate-100 mb-2">{info.heading}</h1>
+          <p className="text-slate-400 text-sm mb-2">{info.message}</p>
+          {info.hint ? <p className="text-slate-500 text-xs mb-6">{info.hint}</p> : <div className="mb-6" />}
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 transition-colors"
+          >
+            Về trang chủ AutoCare
+          </Link>
         </div>
       </main>
     );

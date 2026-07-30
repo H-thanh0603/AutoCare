@@ -80,6 +80,20 @@ async function createPortalAppointment(
   const owner = await getCurrentPortalVehicleOwner(userId, input.vehicleId, db);
   const settings = await getGarageAppointmentSettings(owner.garageId, db);
   const endsAt = assertAppointmentSlot(settings, input.scheduledAt);
+
+  if (settings.maxConcurrentPerSlot > 0) {
+    const overlapping = await db.appointment.count({
+      where: {
+        garageId: owner.garageId,
+        status: { in: ["PENDING", "CONFIRMED"] },
+        scheduledAt: { lt: endsAt },
+        endsAt: { gt: input.scheduledAt },
+      },
+    });
+    if (overlapping >= settings.maxConcurrentPerSlot) {
+      throw new BusinessRuleError("Khung giờ này đã đầy, vui lòng chọn thời điểm khác.");
+    }
+  }
   try {
     return await createAppointment(
       {

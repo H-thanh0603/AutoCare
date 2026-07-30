@@ -45,7 +45,7 @@ export default async function VehicleDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
-  const canWrite = user.garageRole === "RECEPTIONIST" || user.garageRole === "GARAGE_MANAGER";
+  const canWrite = can(user, "vehicle:write");
   const canManageShare = can(user, "share-link:manage");
   const owners = canWrite ? await listCustomerOptions(garageId) : [];
 

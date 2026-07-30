@@ -148,7 +148,9 @@ export async function registerAction(
       await signIn("credentials", { email, password, redirect: false });
     } catch (error) {
       if (error instanceof AuthError) {
-        return { redirectTo: "/dang-nhap" };
+        // Account was created but the immediate sign-in failed. Send them to
+        // the login form with a success notice so they are not left confused.
+        return { redirectTo: "/dang-nhap?tao-tk=1" };
       }
       throw error;
     }

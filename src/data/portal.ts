@@ -9,7 +9,7 @@
 
 import { NotFoundError } from "@/lib/errors";
 import { prisma, type PrismaClientOrTx } from "@/lib/prisma";
-import type { AppointmentStatus, RepairOrderStatus } from "@/generated/prisma/enums";
+import type { AppointmentStatus, InvoiceStatus, RepairOrderStatus } from "@/generated/prisma/enums";
 
 /** The garage-side customer records linked to a portal account. */
 export async function listCustomerIdsForUser(
@@ -259,4 +259,39 @@ export async function getPortalQuotation(
   });
   if (!quotation) throw new NotFoundError("Không tìm thấy báo giá.");
   return quotation;
+}
+
+
+export interface PortalInvoice {
+  id: string;
+  code: string;
+  status: InvoiceStatus;
+  totalAmount: number;
+  paidAmount: number;
+  createdAt: Date;
+  garage: { name: string };
+  repairOrder: { code: string; vehicle: { licensePlate: string } } | null;
+}
+
+/** Invoices belonging to the portal account, scoped by the customer link. */
+export async function listPortalInvoices(
+  userId: string,
+  options: { take?: number } = {},
+  db: PrismaClientOrTx = prisma,
+): Promise<PortalInvoice[]> {
+  return db.invoice.findMany({
+    where: { customer: { userId, deletedAt: null } },
+    select: {
+      id: true,
+      code: true,
+      status: true,
+      totalAmount: true,
+      paidAmount: true,
+      createdAt: true,
+      garage: { select: { name: true } },
+      repairOrder: { select: { code: true, vehicle: { select: { licensePlate: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: options.take ?? 50,
+  });
 }

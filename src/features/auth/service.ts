@@ -10,7 +10,7 @@ import {
   createCustomerUser,
   findUserByEmail,
 } from "@/data/users";
-import { BusinessRuleError } from "@/lib/errors";
+import { ValidationError } from "@/lib/errors";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 
@@ -39,7 +39,9 @@ export async function registerCustomer(
 ): Promise<RegisterCustomerResult> {
   const existing = await findUserByEmail(input.email);
   if (existing) {
-    throw new BusinessRuleError("Email này đã được sử dụng.");
+    throw new ValidationError("Email này đã được sử dụng.", {
+      email: ["Email này đã được sử dụng."],
+    });
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -66,7 +68,9 @@ export async function registerCustomer(
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new BusinessRuleError("Email này đã được sử dụng.");
+      throw new ValidationError("Email này đã được sử dụng.", {
+        email: ["Email này đã được sử dụng."],
+      });
     }
     throw error;
   }

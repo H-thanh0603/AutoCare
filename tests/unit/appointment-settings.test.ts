@@ -23,6 +23,7 @@ describe("appointment settings", () => {
       }),
     ).toEqual({
       appointmentSlotMinutes: 30,
+      maxConcurrentPerSlot: 0,
       workingHours: { 0: { open: "09:00", close: "12:00" } },
     });
   });

@@ -24,7 +24,7 @@ describe("garage appointment settings", () => {
       address: null,
       phone: null,
       email: null,
-      appointmentSettings: { appointmentSlotMinutes: 30, workingHours: {} },
+      appointmentSettings: { appointmentSlotMinutes: 30, maxConcurrentPerSlot: 0, workingHours: {} },
     });
   });
 
@@ -49,6 +49,7 @@ describe("garage appointment settings", () => {
           taxPercent: 8,
           custom: "keep",
           appointmentSlotMinutes: 60,
+          maxConcurrentPerSlot: 0,
           workingHours: DEFAULT_APPOINTMENT_SETTINGS.workingHours,
         },
       },
@@ -71,6 +72,7 @@ describe("garage appointment settings", () => {
       data: {
         settings: {
           appointmentSlotMinutes: 60,
+          maxConcurrentPerSlot: 0,
           workingHours: DEFAULT_APPOINTMENT_SETTINGS.workingHours,
         },
       },
