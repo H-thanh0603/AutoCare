@@ -35,7 +35,7 @@ const DEMO_ACCOUNTS = [
   { role: "🏎️ Khách hàng", email: "khach1@gmail.com" },
 ] as const;
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
@@ -64,6 +64,7 @@ export function LoginForm() {
       const formData = new FormData();
       formData.set("email", values.email);
       formData.set("password", values.password);
+      if (next) formData.set("next", next);
 
       const result = await loginAction(formData);
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { decideQuotationItem, decideQuotationItemAsManager, saveQuotationDraft, sendQuotation } from "@/features/quotations/service";
 import { getSessionUser } from "@/lib/auth";
-import { runAction, ValidationError } from "@/lib/errors";
+import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
 
 function amount(formData: FormData, name: string): number {
@@ -37,6 +37,22 @@ export async function sendQuotationFormAction(formData: FormData): Promise<void>
     const { garageId } = requireGarageScope(user);
     await sendQuotation(garageId, user.id, quotationId);
     revalidatePath("/lenh-sua-chua");
+  });
+}
+
+/** Customer approves/rejects a single item, with an ActionResult the client can show. */
+export async function decideQuotationItemAction(
+  quotationItemId: string,
+  status: "APPROVED" | "REJECTED",
+  customerNote?: string,
+): Promise<ActionResult<void>> {
+  return runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "quotation:approve");
+    await decideQuotationItem(user.id, quotationItemId, {
+      status,
+      customerNote: customerNote?.trim() || null,
+    });
+    revalidatePath("/tai-khoan");
   });
 }
 

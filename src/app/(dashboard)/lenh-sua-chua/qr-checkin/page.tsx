@@ -23,13 +23,19 @@ export const metadata: Metadata = {
 export default async function QrCheckinPage() {
   const { garageId } = await requireStaffPermissionPage("/lenh-sua-chua", "repair-order:write");
 
-  // Fetch recent vehicles in garage for quick 1-click test check-in
+  // Fetch recent vehicles owned in THIS garage for quick 1-click check-in.
   const vehiclesRaw = await prisma.vehicle.findMany({
+    where: {
+      deletedAt: null,
+      ownerships: {
+        some: { isCurrent: true, endedAt: null, customer: { garageId, deletedAt: null } },
+      },
+    },
     take: 6,
     orderBy: { createdAt: "desc" },
     include: {
       ownerships: {
-        where: { isCurrent: true },
+        where: { isCurrent: true, endedAt: null, customer: { garageId, deletedAt: null } },
         include: { customer: { select: { name: true, phone: true } } },
       },
     },

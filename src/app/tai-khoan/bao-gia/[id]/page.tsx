@@ -1,9 +1,8 @@
-import { Check, CheckCircle2, ShieldCheck, XCircle } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { getPortalQuotation } from "@/data/portal";
 import { requireUserPage } from "@/features/auth/guards";
-import { decideQuotationItemFormAction } from "@/features/quotations/actions";
+import { QuotationItemDecision } from "@/features/quotations/quotation-item-decision";
 import { formatVnd } from "@/lib/money";
-import { Button } from "@/components/ui/button";
 
 export default async function PortalQuotationPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUserPage("/tai-khoan");
@@ -77,34 +76,7 @@ export default async function PortalQuotationPage({ params }: { params: Promise<
 
               {/* Action Buttons if item is PENDING and Quotation is SENT or PARTIALLY_APPROVED */}
               {(quotation.status === "SENT" || quotation.status === "PARTIALLY_APPROVED") && item.status === "PENDING" && (
-                <div className="flex items-center justify-end gap-3 pt-1">
-                  <form action={decideQuotationItemFormAction}>
-                    <input type="hidden" name="quotationItemId" value={item.id} />
-                    <input type="hidden" name="status" value="APPROVED" />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl h-10 px-5 shadow-md shadow-emerald-600/20"
-                    >
-                      <Check className="size-4 mr-1.5" />
-                      <span>Đồng ý hạng mục này</span>
-                    </Button>
-                  </form>
-
-                  <form action={decideQuotationItemFormAction}>
-                    <input type="hidden" name="quotationItemId" value={item.id} />
-                    <input type="hidden" name="status" value="REJECTED" />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      variant="outline"
-                      className="border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl h-10 px-4"
-                    >
-                      <XCircle className="size-4 mr-1.5" />
-                      <span>Từ chối</span>
-                    </Button>
-                  </form>
-                </div>
+                <QuotationItemDecision quotationItemId={item.id} />
               )}
             </div>
           ))}

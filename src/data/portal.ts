@@ -172,6 +172,8 @@ export interface PortalRepairOrder {
   deliveredAt: Date | null;
   garage: { id: string; name: string };
   vehicle: { id: string; licensePlate: string; brand: string; model: string };
+  /** Latest quotation for the order, if any, so the portal can link to it. */
+  latestQuotation: { id: string; status: string } | null;
 }
 
 export async function listPortalRepairOrders(
@@ -182,7 +184,7 @@ export async function listPortalRepairOrders(
   const customerIds = await listCustomerIdsForUser(userId, db);
   if (customerIds.length === 0) return [];
 
-  return db.repairOrder.findMany({
+  const rows = await db.repairOrder.findMany({
     where: { customerId: { in: customerIds } },
     select: {
       id: true,
@@ -192,10 +194,19 @@ export async function listPortalRepairOrders(
       deliveredAt: true,
       garage: { select: { id: true, name: true } },
       vehicle: { select: { id: true, licensePlate: true, brand: true, model: true } },
+      quotations: {
+        orderBy: { versionNo: "desc" },
+        take: 1,
+        select: { id: true, status: true },
+      },
     },
     orderBy: { receivedAt: "desc" },
     take: options.take ?? 10,
   });
+  return rows.map(({ quotations, ...order }) => ({
+    ...order,
+    latestQuotation: quotations[0] ?? null,
+  }));
 }
 
 export async function getPortalQuotation(

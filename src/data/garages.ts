@@ -95,3 +95,22 @@ export async function getGarageById(
   }
   return garage;
 }
+
+
+export interface GarageTechnician {
+  id: string;
+  name: string;
+}
+
+/** Active technicians of a garage, for work-task assignment dropdowns. */
+export async function listGarageTechnicians(
+  garageId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<GarageTechnician[]> {
+  const members = await db.garageMember.findMany({
+    where: { garageId, isActive: true, role: "TECHNICIAN" },
+    select: { user: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  return members.map((member) => member.user);
+}

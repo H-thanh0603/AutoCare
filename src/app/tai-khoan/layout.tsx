@@ -1,5 +1,6 @@
 import { Bell, Car, ChevronRight, Home, LogOut, User, Wrench } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -8,7 +9,8 @@ import { LogoutButton } from "@/features/auth/logout-button";
 import { isStaff } from "@/lib/rbac";
 
 export default async function PortalLayout({ children }: { children: ReactNode }) {
-  const user = await requireUserPage("/tai-khoan");
+  const pathname = (await headers()).get("x-pathname") ?? "/tai-khoan";
+  const user = await requireUserPage(pathname);
 
   if (isStaff(user)) {
     redirect("/bang-dieu-khien");

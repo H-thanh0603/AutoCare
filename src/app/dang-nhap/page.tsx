@@ -6,16 +6,22 @@ import { Car } from "lucide-react";
 import { LoginForm } from "@/features/auth/login-form";
 import { getSessionUser } from "@/lib/auth";
 import { isStaff } from "@/lib/rbac";
+import { safeInternalPath } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Đăng nhập · AutoCare.vn",
   description: "Đăng nhập vào AutoCare để quản lý gara hoặc theo dõi xe của bạn.",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ "tiep-tuc"?: string }>;
+}) {
+  const next = safeInternalPath((await searchParams)["tiep-tuc"]);
   const user = await getSessionUser();
   if (user) {
-    redirect(isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan");
+    redirect(next ?? (isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan"));
   }
 
   return (
@@ -44,12 +50,12 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <LoginForm />
+        <LoginForm next={next ?? undefined} />
 
         <div className="text-center space-y-2 text-xs text-slate-600 font-medium">
           <p>
             Chưa có tài khoản chủ xe?{" "}
-            <Link href="/dang-ky" className="font-bold text-blue-600 hover:text-blue-700 underline underline-offset-4">
+            <Link href={next ? `/dang-ky?tiep-tuc=${encodeURIComponent(next)}` : "/dang-ky"} className="font-bold text-blue-600 hover:text-blue-700 underline underline-offset-4">
               Tạo tài khoản mới ngay
             </Link>
           </p>
