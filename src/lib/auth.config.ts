@@ -27,6 +27,22 @@ declare module "next-auth" {
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
 /**
+ * Resolves the JWT signing secret.
+ *
+ * A predictable fallback would let anyone forge a session, so production must
+ * fail closed when `AUTH_SECRET` is missing. A clearly-marked dev-only value is
+ * used outside production so local runs and tests still work.
+ */
+function resolveAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET must be set in production.");
+  }
+  return "autocare-dev-only-insecure-secret";
+}
+
+/**
  * The JWT type in next-auth v5 is re-exported from `@auth/core/jwt` and cannot
  * be module-augmented reliably, so custom claims are read back through these
  * narrowing helpers instead of being declared on the interface.
@@ -62,7 +78,7 @@ export function asGarageRole(value: unknown): GarageRole | null {
  * Node-side override in `./auth.ts`.
  */
 export const authConfig = {
-  secret: process.env.AUTH_SECRET ?? "autocare-jwt-secret-key-2026-fallback",
+  secret: resolveAuthSecret(),
   session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/dang-nhap" },
   trustHost: true,

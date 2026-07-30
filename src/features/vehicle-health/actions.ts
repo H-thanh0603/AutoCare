@@ -25,8 +25,10 @@ export async function createShareLinkAction(vehicleId: string, durationDays = 30
 export async function revokeShareLinkAction(shareLinkId: string) {
   return runAction(async () => {
     const user = requirePermission(await getSessionUser(), "share-link:manage");
+    const { garageId } = requireGarageScope(user);
     return revokeShareLink({
       shareLinkId,
+      garageId,
       actorUserId: user.id,
     });
   });

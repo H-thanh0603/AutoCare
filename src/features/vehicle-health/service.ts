@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { RecordSource, TimelineEventType } from "@/generated/prisma/enums";
+import { assertVehicleInGarage } from "@/data/vehicles";
 import {
   calculateNextServiceDue,
   sanitizePublicVehicleHealth,
@@ -99,7 +100,7 @@ export async function syncVehicleHealthFromRepairOrder(
 export async function createShareLink(input: {
   vehicleId: string;
   durationDays?: number;
-  garageId?: string | null;
+  garageId: string;
   createdById: string;
 }) {
   const { vehicleId, durationDays = 30, garageId, createdById } = input;
@@ -112,8 +113,9 @@ export async function createShareLink(input: {
   const expiresAt = new Date(Date.now() + durationDays * 86400 * 1000);
 
   return prisma.$transaction(async (tx) => {
-    const vehicle = await tx.vehicle.findUnique({ where: { id: vehicleId } });
-    if (!vehicle) throw new NotFoundError("Không tìm thấy xe.");
+    // Tenant scope: the vehicle must be owned by a customer of this garage.
+    // A missing/foreign vehicle fails identically so ids cannot be probed.
+    await assertVehicleInGarage(garageId, vehicleId, tx);
 
     const shareLink = await tx.shareLink.create({
       data: {
@@ -129,7 +131,7 @@ export async function createShareLink(input: {
         action: AUDIT_ACTIONS.SHARE_LINK_CREATED,
         entityType: "ShareLink",
         entityId: shareLink.id,
-        garageId: garageId ?? null,
+        garageId,
         actorUserId: createdById,
         after: { vehicleId, expiresAt },
       },
@@ -215,12 +217,31 @@ export async function getPublicVehicleHealth(token: string) {
   });
 }
 
-export async function revokeShareLink(input: { shareLinkId: string; actorUserId: string }) {
-  const { shareLinkId, actorUserId } = input;
+export async function revokeShareLink(input: {
+  shareLinkId: string;
+  garageId: string;
+  actorUserId: string;
+}) {
+  const { shareLinkId, garageId, actorUserId } = input;
   if (!shareLinkId) throw new ValidationError("ID liên kết chia sẻ là bắt buộc.");
 
   return prisma.$transaction(async (tx) => {
-    const link = await tx.shareLink.findUnique({ where: { id: shareLinkId } });
+    // Tenant scope: only links for vehicles owned by this garage's customers
+    // can be revoked. A foreign or nonexistent id yields the same NotFound.
+    const link = await tx.shareLink.findFirst({
+      where: {
+        id: shareLinkId,
+        vehicle: {
+          ownerships: {
+            some: {
+              isCurrent: true,
+              endedAt: null,
+              customer: { garageId, deletedAt: null },
+            },
+          },
+        },
+      },
+    });
     if (!link) throw new NotFoundError("Không tìm thấy liên kết chia sẻ.");
 
     if (link.revokedAt) {
@@ -237,6 +258,7 @@ export async function revokeShareLink(input: { shareLinkId: string; actorUserId:
         action: AUDIT_ACTIONS.SHARE_LINK_REVOKED,
         entityType: "ShareLink",
         entityId: shareLinkId,
+        garageId,
         actorUserId,
         after: { revokedAt: updated.revokedAt },
       },

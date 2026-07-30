@@ -16,19 +16,14 @@ import { UserRole } from "@/generated/prisma/enums";
 import { credentialsSchema, registerSchema } from "@/lib/auth-schema";
 import { signIn, signOut } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
-import { RATE_LIMITS, checkRateLimit, resetRateLimit } from "@/lib/rate-limit";
+import { RATE_LIMITS, checkRateLimit, resetRateLimit, resolveClientIp } from "@/lib/rate-limit";
 
 import { registerCustomer } from "./service";
 
 /** Best-effort client IP; behind a proxy this comes from `x-forwarded-for`. */
 async function clientIp(): Promise<string> {
   const headerList = await headers();
-  const forwarded = headerList.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return headerList.get("x-real-ip") ?? "unknown";
+  return resolveClientIp(headerList);
 }
 
 export interface LoginResultData {
@@ -68,7 +63,7 @@ export async function loginAction(
     // for the server-decided destination.
     const account = await findUserByEmail(email);
     const rateKey = `login:${email}:${await clientIp()}`;
-    const limit = checkRateLimit({ key: rateKey, ...RATE_LIMITS.LOGIN });
+    const limit = await checkRateLimit({ key: rateKey, ...RATE_LIMITS.LOGIN });
 
     if (!limit.ok) {
       const minutes = Math.ceil(limit.retryAfterSeconds / 60);
@@ -88,7 +83,7 @@ export async function loginAction(
       throw error;
     }
 
-    resetRateLimit(rateKey);
+    await resetRateLimit(rateKey);
 
     // Destination comes from the account role, never from the form. The client
     // cannot steer itself into the dashboard, and this action need not read the
@@ -134,7 +129,7 @@ export async function registerAction(
     const { name, email, phone, password } = parsed.data;
 
     const rateKey = `register:${await clientIp()}`;
-    const limit = checkRateLimit({ key: rateKey, ...RATE_LIMITS.REGISTER });
+    const limit = await checkRateLimit({ key: rateKey, ...RATE_LIMITS.REGISTER });
     if (!limit.ok) {
       const minutes = Math.ceil(limit.retryAfterSeconds / 60);
       throw new ValidationError(
