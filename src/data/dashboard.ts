@@ -9,6 +9,7 @@ import { RepairOrderStatus } from "@/generated/prisma/enums";
 
 import type { PrismaClientOrTx } from "@/lib/prisma";
 import { prisma } from "@/lib/prisma";
+import { createTtlCache } from "@/lib/ttl-cache";
 
 /** Orders that are still being worked on, in workflow order. */
 export const OPEN_REPAIR_ORDER_STATUSES = [
@@ -35,7 +36,21 @@ function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
+const summaryCache = createTtlCache<DashboardSummary>(15_000);
+
 export async function getDashboardSummary(
+  garageId: string,
+  db: PrismaClientOrTx = prisma,
+): Promise<DashboardSummary> {
+  // When running inside a transaction the caller expects live reads; bypass the
+  // cache so a fresh db handle is used and no stale counts leak into a write.
+  if (db !== prisma) {
+    return computeDashboardSummary(garageId, db);
+  }
+  return summaryCache.getOrSet(`summary:${garageId}`, () => computeDashboardSummary(garageId));
+}
+
+async function computeDashboardSummary(
   garageId: string,
   db: PrismaClientOrTx = prisma,
 ): Promise<DashboardSummary> {

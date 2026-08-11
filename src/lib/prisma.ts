@@ -12,6 +12,14 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+/**
+ * Connection pool cap. node-postgres defaults to 10, which is too small for a
+ * single long-lived server handling hundreds of concurrent requests. Tune via
+ * `DATABASE_POOL_SIZE` to match the deployment (Supabase/pgbouncer pools run
+ * far smaller than a direct Postgres connection).
+ */
+const POOL_SIZE = Number(process.env.DATABASE_POOL_SIZE ?? 20);
+
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -19,7 +27,7 @@ function createPrismaClient(): PrismaClient {
   }
 
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    adapter: new PrismaPg({ connectionString, max: POOL_SIZE }),
     log:
       process.env.NODE_ENV === "development"
         ? ["warn", "error"]

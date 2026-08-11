@@ -1,6 +1,7 @@
 import { InvoiceStatus, RepairOrderStatus } from "@/generated/prisma/enums";
 import { addMoney, subtractMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { createTtlCache } from "@/lib/ttl-cache";
 
 export interface DashboardMetricsDTO {
   todayAppointmentsCount: number;
@@ -19,7 +20,13 @@ export interface DashboardMetricsDTO {
   }>;
 }
 
+const dashboardCache = createTtlCache<DashboardMetricsDTO>(30_000);
+
 export async function getDashboardMetrics(garageId: string): Promise<DashboardMetricsDTO> {
+  return dashboardCache.getOrSet(`metrics:${garageId}`, () => computeDashboardMetrics(garageId));
+}
+
+async function computeDashboardMetrics(garageId: string): Promise<DashboardMetricsDTO> {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
