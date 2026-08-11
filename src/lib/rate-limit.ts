@@ -5,6 +5,10 @@ export const RATE_LIMITS = {
   REGISTER: { limit: 3, windowMs: 60 * 60 * 1000 },
   MEDIA_UPLOAD: { limit: 20, windowMs: 60 * 1000 },
   PUBLIC_SHARE: { limit: 30, windowMs: 60 * 1000 },
+  /** Customer booking actions on the portal (create/cancel/reschedule). */
+  PORTAL_BOOKING: { limit: 20, windowMs: 60 * 60 * 1000 },
+  /** Customer decisions on sent quotations (approve/reject items). */
+  PORTAL_QUOTATION: { limit: 30, windowMs: 60 * 60 * 1000 },
 } as const;
 
 export interface RateLimitOptions {

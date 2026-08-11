@@ -13,6 +13,7 @@ import {
 } from "@/features/appointments/service";
 import { getSessionUser } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
+import { RATE_LIMITS, assertRateLimit } from "@/lib/rate-limit";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
 import { updateGarageAppointmentSettings } from "@/data/garages";
 import { parseAppointmentSettings } from "@/lib/appointment-settings";
@@ -40,6 +41,7 @@ export async function createPortalAppointmentAction(formData: FormData): Promise
     const parsed = appointmentInputSchema.safeParse(bookingInput(formData));
     if (!parsed.success) throw new ValidationError("Dữ liệu lịch hẹn không hợp lệ.", formErrors(parsed.error));
     const user = requirePermission(await getSessionUser(), "appointment:write");
+    await assertRateLimit({ key: `booking:${user.id}`, ...RATE_LIMITS.PORTAL_BOOKING });
     const result = await createCustomerAppointment(user.id, parsed.data);
     revalidatePath("/tai-khoan");
     revalidatePath("/tai-khoan/lich-hen");
@@ -54,6 +56,7 @@ export async function createPortalAppointmentFormAction(formData: FormData): Pro
 export async function cancelPortalAppointmentAction(appointmentId: string, formData: FormData): Promise<ActionResult<void>> {
   return runAction(async () => {
     const user = requirePermission(await getSessionUser(), "appointment:write");
+    await assertRateLimit({ key: `booking:${user.id}`, ...RATE_LIMITS.PORTAL_BOOKING });
     await cancelCustomerAppointment(user.id, appointmentId, String(formData.get("reason") ?? "Khách hủy lịch"));
     revalidatePath("/tai-khoan");
     revalidatePath(`/tai-khoan/lich-hen/${appointmentId}`);
@@ -65,6 +68,7 @@ export async function reschedulePortalAppointmentAction(appointmentId: string, f
     const scheduledAt = new Date(String(formData.get("scheduledAt") ?? ""));
     if (Number.isNaN(scheduledAt.getTime())) throw new ValidationError("Thời gian hẹn không hợp lệ.");
     const user = requirePermission(await getSessionUser(), "appointment:write");
+    await assertRateLimit({ key: `booking:${user.id}`, ...RATE_LIMITS.PORTAL_BOOKING });
     const result = await rescheduleCustomerAppointment(user.id, appointmentId, scheduledAt);
     revalidatePath("/tai-khoan");
     revalidatePath("/tai-khoan/lich-hen");

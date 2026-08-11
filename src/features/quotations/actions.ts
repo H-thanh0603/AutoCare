@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { decideQuotationItem, decideQuotationItemAsManager, saveQuotationDraft, sendQuotation } from "@/features/quotations/service";
 import { getSessionUser } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
+import { RATE_LIMITS, assertRateLimit } from "@/lib/rate-limit";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
 
 function amount(formData: FormData, name: string): number {
@@ -48,6 +49,7 @@ export async function decideQuotationItemAction(
 ): Promise<ActionResult<void>> {
   return runAction(async () => {
     const user = requirePermission(await getSessionUser(), "quotation:approve");
+    await assertRateLimit({ key: `quotation:${user.id}`, ...RATE_LIMITS.PORTAL_QUOTATION });
     await decideQuotationItem(user.id, quotationItemId, {
       status,
       customerNote: customerNote?.trim() || null,
@@ -59,6 +61,7 @@ export async function decideQuotationItemAction(
 export async function decideQuotationItemFormAction(formData: FormData): Promise<void> {
   await runAction(async () => {
     const user = requirePermission(await getSessionUser(), "quotation:approve");
+    await assertRateLimit({ key: `quotation:${user.id}`, ...RATE_LIMITS.PORTAL_QUOTATION });
     const itemId = String(formData.get("quotationItemId") ?? "");
     const status = String(formData.get("status") ?? "");
     if (status !== "APPROVED" && status !== "REJECTED" && status !== "NEEDS_CLARIFICATION") {
@@ -72,6 +75,7 @@ export async function decideQuotationItemFormAction(formData: FormData): Promise
 export async function decideQuotationItemAsManagerFormAction(formData: FormData): Promise<void> {
   await runAction(async () => {
     const user = requirePermission(await getSessionUser(), "quotation:approve");
+    await assertRateLimit({ key: `quotation:${user.id}`, ...RATE_LIMITS.PORTAL_QUOTATION });
     const { garageId } = requireGarageScope(user);
     const itemId = String(formData.get("quotationItemId") ?? "");
     const status = String(formData.get("status") ?? "");
