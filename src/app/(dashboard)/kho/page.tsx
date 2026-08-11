@@ -18,6 +18,7 @@ import { InventoryManager } from "@/features/inventory/inventory-manager";
 import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { Prisma, type Part } from "@/generated/prisma/client";
 
 export const metadata: Metadata = {
   title: "Kho Phụ tùng · AutoCare",
@@ -31,19 +32,47 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
   minute: "2-digit",
 });
 
+/** Cap table rows so a large garage cannot force one giant query per render. */
+const PART_LIST_LIMIT = 200;
+
+async function getPartRows(garageId: string, lowStockOnly: boolean) {
+  const activeWhere = { garageId, isActive: true } satisfies Prisma.PartWhereInput;
+
+  // "quantityInStock <= lowStockThreshold" compares two columns, which the
+  // Prisma query builder cannot express in `where`. Use raw SQL for that path.
+  const parts = lowStockOnly
+    ? await prisma.$queryRaw<Part[]>(Prisma.sql`
+        SELECT * FROM "parts"
+        WHERE "garageId" = ${garageId} AND "isActive" = true
+          AND "quantityInStock" <= "lowStockThreshold"
+        ORDER BY "name" ASC
+        LIMIT ${PART_LIST_LIMIT}
+      `)
+    : await prisma.part.findMany({ where: activeWhere, orderBy: { name: "asc" }, take: PART_LIST_LIMIT });
+
+  const [totalCount, lowStockCount] = await Promise.all([
+    prisma.part.count({ where: activeWhere }),
+    prisma.$queryRaw<{ count: number }[]>(Prisma.sql`
+      SELECT COUNT(*)::int AS count FROM "parts"
+      WHERE "garageId" = ${garageId} AND "isActive" = true
+        AND "quantityInStock" <= "lowStockThreshold"
+    `),
+  ]);
+
+  return { parts, totalCount, lowStockCount: lowStockCount[0]?.count ?? 0 };
+}
+
 export default async function InventoryPage({
   searchParams,
 }: {
   searchParams: Promise<{ loc?: string }>;
 }) {
   const { user, garageId } = await requireStaffPermissionPage("/kho", "inventory:read");
-  const lowStockOnly = (await searchParams).loc === "ton-thap";
+  const { loc } = await searchParams;
+  const lowStockOnly = loc === "ton-thap";
 
-  const [parts, recentTx] = await Promise.all([
-    prisma.part.findMany({
-      where: { garageId, isActive: true },
-      orderBy: { name: "asc" },
-    }),
+  const [{ parts, totalCount, lowStockCount }, recentTx] = await Promise.all([
+    getPartRows(garageId, lowStockOnly),
     prisma.inventoryTransaction.findMany({
       where: { garageId },
       include: { part: { select: { name: true, sku: true, unit: true } } },
@@ -52,23 +81,18 @@ export default async function InventoryPage({
     }),
   ]);
 
+  // Computed from the capped result set; exact totals for very large garages
+  // are approximated by the latest PART_LIST_LIMIT rows.
   let totalCostValueVnd = 0;
   let totalRetailValueVnd = 0;
-  let lowStockCount = 0;
-
   for (const p of parts) {
     if (p.quantityInStock > 0) {
       totalCostValueVnd += p.quantityInStock * p.costPrice;
       totalRetailValueVnd += p.quantityInStock * p.sellPrice;
     }
-    if (p.quantityInStock <= p.lowStockThreshold) {
-      lowStockCount++;
-    }
   }
 
-  const displayedParts = lowStockOnly
-    ? parts.filter((p) => p.quantityInStock <= p.lowStockThreshold)
-    : parts;
+  const displayedParts = parts;
 
   return (
     <div className="space-y-8">
@@ -86,7 +110,7 @@ export default async function InventoryPage({
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
           <span className="text-xs font-bold text-slate-500 uppercase block">Tổng loại Phụ tùng</span>
-          <span className="text-2xl font-black text-slate-900 font-mono">{parts.length} Mặt hàng</span>
+          <span className="text-2xl font-black text-slate-900 font-mono">{totalCount} Mặt hàng</span>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">

@@ -268,7 +268,13 @@ export async function countOpenRepairOrdersForCustomer(
   });
 }
 
-/** Lightweight options list for owner pickers. */
+/**
+ * Lightweight options list for owner pickers.
+ *
+ * Capped so a garage with tens of thousands of customers cannot force one giant
+ * query per form render. Owner pickers are for recent/common customers; a full
+ * directory lives in the customer list page.
+ */
 export async function listCustomerOptions(
   garageId: string,
   db: PrismaClientOrTx = prisma,
@@ -276,6 +282,7 @@ export async function listCustomerOptions(
   return db.customer.findMany({
     where: { garageId, deletedAt: null },
     select: { id: true, name: true, phone: true },
-    orderBy: { name: "asc" },
+    orderBy: { createdAt: "desc" },
+    take: 500,
   });
 }

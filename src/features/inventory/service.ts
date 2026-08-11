@@ -426,6 +426,8 @@ export async function returnPartStock(input: {
   });
 }
 
+const PART_LIST_LIMIT = 200;
+
 export async function getParts(garageId: string, search?: string) {
   return prisma.part.findMany({
     where: {
@@ -441,17 +443,18 @@ export async function getParts(garageId: string, search?: string) {
         : {}),
     },
     orderBy: { name: "asc" },
+    take: PART_LIST_LIMIT,
   });
 }
 
 export async function getLowStockParts(garageId: string) {
+  // Column-to-column comparison is not expressible in the Prisma query builder,
+  // so pull the lowest-stock rows and filter in memory. Capped to bound the
+  // query size.
   const parts = await prisma.part.findMany({
-    where: {
-      garageId,
-      isActive: true,
-    },
+    where: { garageId, isActive: true },
     orderBy: { quantityInStock: "asc" },
+    take: PART_LIST_LIMIT,
   });
-
   return parts.filter((p) => p.quantityInStock <= p.lowStockThreshold);
 }
