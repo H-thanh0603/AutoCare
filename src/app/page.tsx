@@ -103,6 +103,7 @@ const TESTIMONIALS = [
 export default async function HomePage() {
   const user = await getSessionUser();
   const portalHref = user ? (isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan") : null;
+  const vehicleRecordsHref = user ? (isStaff(user) ? "/xe" : "/tai-khoan") : "/tai-khoan";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
@@ -146,7 +147,9 @@ export default async function HomePage() {
             <Link href="/dich-vu" className="hover:text-blue-600 transition-colors">Dịch vụ Gara</Link>
             <Link href="#cost-calculator" className="hover:text-blue-600 transition-colors">Dự toán chi phí</Link>
             <Link href="/ve-chung-toi" className="hover:text-blue-600 transition-colors">Về AutoCare</Link>
-            <Link href="/tai-khoan" prefetch={false} className="hover:text-blue-600 transition-colors">Hồ sơ xe điện tử</Link>
+            <Link href={vehicleRecordsHref} prefetch={false} className="hover:text-blue-600 transition-colors">
+              {user && isStaff(user) ? "Quản lý Hồ sơ xe" : "Hồ sơ xe điện tử"}
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
