@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, JetBrains_Mono } from "next/font/google";
+import { Suspense } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { PostHogProvider, PostHogPageView } from "@/components/providers/posthog-provider";
 
 import "./globals.css";
 
@@ -38,8 +40,13 @@ export default function RootLayout({
       className={`${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        {children}
-        <Toaster position="top-right" richColors />
+        <PostHogProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          {children}
+          <Toaster position="top-right" richColors />
+        </PostHogProvider>
       </body>
     </html>
   );
