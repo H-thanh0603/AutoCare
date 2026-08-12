@@ -383,7 +383,7 @@ export default async function HomePage() {
                 </span>
 
                 <h2 id="transparency-heading" className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-                  Không còn lo bị ép sửa hay "vẽ thêm bệnh" ngoài ý muốn.
+                  Không còn lo bị ép sửa hay &quot;vẽ thêm bệnh&quot; ngoài ý muốn.
                 </h2>
 
                 <p className="text-slate-300 text-base leading-relaxed">
@@ -472,7 +472,7 @@ export default async function HomePage() {
                       ))}
                     </div>
                     <p className="text-slate-700 text-sm italic leading-relaxed">
-                      "{item.comment}"
+                      &quot;{item.comment}&quot;
                     </p>
                   </div>
 

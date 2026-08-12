@@ -189,7 +189,7 @@ enum NotificationType {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
   name         String
@@ -211,7 +211,7 @@ model User {
 }
 
 model Garage {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   name      String
   address   String?
   phone     String?
@@ -237,7 +237,7 @@ model Garage {
 }
 
 model GarageMember {
-  id        String     @id @default(cuid())
+  id        String     @id @default(uuid())
   garageId  String
   userId    String
   role      GarageRole
@@ -258,7 +258,7 @@ model GarageMember {
 // ---------------------------------------------------------------------------
 
 model Customer {
-  id        String    @id @default(cuid())
+  id        String    @id @default(uuid())
   garageId  String
   /// Optional link to a portal user account.
   userId    String?
@@ -285,7 +285,7 @@ model Customer {
 }
 
 model Vehicle {
-  id           String    @id @default(cuid())
+  id           String    @id @default(uuid())
   /// VIN / số khung — stable identifier when available.
   vin          String?   @unique
   licensePlate String
@@ -316,7 +316,7 @@ model Vehicle {
 }
 
 model VehicleOwnership {
-  id         String    @id @default(cuid())
+  id         String    @id @default(uuid())
   vehicleId  String
   customerId String
   startedAt  DateTime  @default(now())
@@ -334,7 +334,7 @@ model VehicleOwnership {
 }
 
 model MileageLog {
-  id             String       @id @default(cuid())
+  id             String       @id @default(uuid())
   vehicleId      String
   garageId       String?
   mileageKm      Int
@@ -356,7 +356,7 @@ model MileageLog {
 // ---------------------------------------------------------------------------
 
 model Appointment {
-  id             String            @id @default(cuid())
+  id             String            @id @default(uuid())
   garageId       String
   customerId     String
   vehicleId      String
@@ -384,7 +384,7 @@ model Appointment {
 }
 
 model RepairOrder {
-  id              String            @id @default(cuid())
+  id              String            @id @default(uuid())
   garageId        String
   /// Human-readable code, unique per garage, e.g. RO-2026-0001.
   code            String
@@ -426,7 +426,7 @@ model RepairOrder {
 }
 
 model RepairOrderSequence {
-  id        String @id @default(cuid())
+  id        String @id @default(uuid())
   garageId  String
   year      Int
   nextValue Int    @default(1)
@@ -442,7 +442,7 @@ model RepairOrderSequence {
 // ---------------------------------------------------------------------------
 
 model Inspection {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   garageId      String
   repairOrderId String    @unique
   inspectorId   String?
@@ -460,7 +460,7 @@ model Inspection {
 }
 
 model InspectionItem {
-  id             String             @id @default(cuid())
+  id             String             @id @default(uuid())
   inspectionId   String
   category       String
   name           String
@@ -483,7 +483,7 @@ model InspectionItem {
 // ---------------------------------------------------------------------------
 
 model Quotation {
-  id              String          @id @default(cuid())
+  id              String          @id @default(uuid())
   garageId        String
   repairOrderId   String
   /// Version number within the repair order (1, 2, ...).
@@ -517,7 +517,7 @@ model Quotation {
 }
 
 model QuotationItem {
-  id             String              @id @default(cuid())
+  id             String              @id @default(uuid())
   quotationId    String
   type           QuotationItemType   @default(SERVICE)
   serviceId      String?
@@ -551,7 +551,7 @@ model QuotationItem {
 // ---------------------------------------------------------------------------
 
 model WorkTask {
-  id               String         @id @default(cuid())
+  id               String         @id @default(uuid())
   garageId         String
   repairOrderId    String
   quotationItemId  String?
@@ -581,7 +581,7 @@ model WorkTask {
 }
 
 model WorkLog {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   workTaskId   String
   userId       String
   note         String
@@ -600,7 +600,7 @@ model WorkLog {
 // ---------------------------------------------------------------------------
 
 model Service {
-  id               String   @id @default(cuid())
+  id               String   @id @default(uuid())
   garageId         String
   name             String
   description      String?
@@ -619,7 +619,7 @@ model Service {
 }
 
 model Part {
-  id                String   @id @default(cuid())
+  id                String   @id @default(uuid())
   garageId          String
   sku               String
   name              String
@@ -645,7 +645,7 @@ model Part {
 }
 
 model InventoryTransaction {
-  id            String          @id @default(cuid())
+  id            String          @id @default(uuid())
   garageId      String
   partId        String
   type          InventoryTxType
@@ -673,7 +673,7 @@ model InventoryTransaction {
 // ---------------------------------------------------------------------------
 
 model Invoice {
-  id             String        @id @default(cuid())
+  id             String        @id @default(uuid())
   garageId       String
   /// Human-readable code, unique per garage, e.g. INV-2026-0001.
   code           String
@@ -707,7 +707,7 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id                    String  @id @default(cuid())
+  id                    String  @id @default(uuid())
   invoiceId             String
   description           String
   quantity              Int     @default(1)
@@ -724,7 +724,7 @@ model InvoiceItem {
 }
 
 model Payment {
-  id           String        @id @default(cuid())
+  id           String        @id @default(uuid())
   garageId     String
   invoiceId    String
   type         PaymentType   @default(PAYMENT)
@@ -750,7 +750,7 @@ model Payment {
 // ---------------------------------------------------------------------------
 
 model VehicleTimelineEvent {
-  id            String            @id @default(cuid())
+  id            String            @id @default(uuid())
   vehicleId     String
   garageId      String?
   type          TimelineEventType
@@ -772,7 +772,7 @@ model VehicleTimelineEvent {
 }
 
 model MaintenanceRecord {
-  id               String       @id @default(cuid())
+  id               String       @id @default(uuid())
   vehicleId        String
   garageId         String?
   repairOrderId    String?
@@ -794,7 +794,7 @@ model MaintenanceRecord {
 }
 
 model Warranty {
-  id              String    @id @default(cuid())
+  id              String    @id @default(uuid())
   vehicleId       String
   garageId        String?
   repairOrderId   String?
@@ -815,7 +815,7 @@ model Warranty {
 }
 
 model VehicleSystemStatus {
-  id            String          @id @default(cuid())
+  id            String          @id @default(uuid())
   vehicleId     String
   system        VehicleSystem
   condition     SystemCondition @default(UNKNOWN)
@@ -830,7 +830,7 @@ model VehicleSystemStatus {
 }
 
 model ShareLink {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   vehicleId   String
   token       String    @unique
   /// Options, e.g. { "showOwner": false, "showInvoices": false }.
@@ -852,7 +852,7 @@ model ShareLink {
 // ---------------------------------------------------------------------------
 
 model Media {
-  id               String     @id @default(cuid())
+  id               String     @id @default(uuid())
   garageId         String?
   vehicleId        String?
   repairOrderId    String?
@@ -877,7 +877,7 @@ model Media {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
+  id        String           @id @default(uuid())
   userId    String
   garageId  String?
   type      NotificationType @default(SYSTEM)
@@ -895,7 +895,7 @@ model Notification {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String   @id @default(uuid())
   garageId    String?
   actorUserId String?
   action      String
