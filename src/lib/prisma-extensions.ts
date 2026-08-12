@@ -13,7 +13,7 @@ export function withAuditExtension(
     name: "audit-extension",
     query: {
       $allModels: {
-        async create({ model, _operation, args, query }) {
+        async create({ model, args, query }) {
           const result = await query(args);
           const resObj = result as Record<string, unknown>;
           await recordAudit({
@@ -26,7 +26,7 @@ export function withAuditExtension(
           });
           return result;
         },
-        async update({ model, _operation, args, query }) {
+        async update({ model, args, query }) {
           const result = await query(args);
           const resObj = result as Record<string, unknown>;
           await recordAudit({
@@ -39,7 +39,7 @@ export function withAuditExtension(
           });
           return result;
         },
-        async delete({ model, _operation, args, query }) {
+        async delete({ model, args, query }) {
           const result = await query(args);
           const resObj = result as Record<string, unknown>;
           await recordAudit({

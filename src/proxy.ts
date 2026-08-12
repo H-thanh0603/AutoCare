@@ -69,16 +69,20 @@ function buildCsp(nonce: string): string {
   return directives.join("; ");
 }
 
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import type { NextFetchEvent, NextRequest } from "next/server";
+
 function applySecurityHeaders(response: NextResponse, csp: string): NextResponse {
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   return response;
 }
 
-export default auth((request) => {
+const authMiddleware = auth((request) => {
   const nonce = btoa(crypto.randomUUID());
   const csp = buildCsp(nonce);
 
@@ -120,6 +124,27 @@ export default auth((request) => {
 
   return pass();
 });
+
+export default async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const ip = getClientIp(request);
+  const rateLimitResult = await checkRateLimit({
+    key: `ip:${ip}`,
+    limit: 60,
+    windowMs: 60 * 1000,
+  });
+
+  if (!rateLimitResult.allowed) {
+    return new NextResponse("Too Many Requests", { 
+      status: 429,
+      headers: {
+        "Retry-After": rateLimitResult.retryAfterSeconds.toString()
+      }
+    });
+  }
+
+  // NextAuth types expect a specific request type, any bypasses compilation issues
+  return (authMiddleware as any)(request, event);
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)"],

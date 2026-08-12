@@ -27,7 +27,7 @@ export async function GET(
     };
 
     const stream = await renderToStream(
-      React.createElement(QuotationDocument, dummyQuotation)
+      React.createElement(QuotationDocument, dummyQuotation) as any
     );
 
     return new Response(stream as any, {
