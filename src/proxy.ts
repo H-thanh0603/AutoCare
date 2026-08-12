@@ -1,9 +1,8 @@
 /**
- * Server-side proxy: security gate, security headers and access control.
+ * Server-side proxy: security gate, security headers, rate limiting and access control.
  *
- * Enforces a nonce-based Content-Security-Policy plus the standard hardening
- * headers, checks route authorization, and protects staff/customer areas.
- * (Formerly `middleware.ts`; renamed to the Next.js 16 `proxy` convention.)
+ * Enforces a nonce-based Content-Security-Policy plus standard hardening headers,
+ * IP rate limiting, checks route authorization, and protects staff/customer areas.
  */
 
 import NextAuth from "next-auth";
@@ -11,6 +10,7 @@ import { NextResponse } from "next/server";
 
 import { authConfig } from "@/lib/auth.config";
 import { isStaff } from "@/lib/rbac";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 const { auth } = NextAuth(authConfig);
 
@@ -37,13 +37,6 @@ function matches(pathname: string, prefixes: readonly string[]): boolean {
 
 /**
  * Builds the CSP for a request.
- *
- * Production uses a per-request nonce with `strict-dynamic`, so no inline
- * script runs unless Next.js tagged it with this nonce — `'unsafe-inline'` is
- * gone for scripts. Development relaxes `script-src` because the dev server and
- * React Fast Refresh rely on inline and `eval`-based code. `style-src` keeps
- * `'unsafe-inline'` in both because Next/Tailwind inject inline styles and
- * style-injection is far lower risk than script injection.
  */
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== "production";
@@ -57,7 +50,7 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https:",
+    "connect-src 'self' https: http: ws: wss:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -69,9 +62,6 @@ function buildCsp(nonce: string): string {
   return directives.join("; ");
 }
 
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import type { NextFetchEvent, NextRequest } from "next/server";
-
 function applySecurityHeaders(response: NextResponse, csp: string): NextResponse {
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -82,12 +72,28 @@ function applySecurityHeaders(response: NextResponse, csp: string): NextResponse
   return response;
 }
 
-const authMiddleware = auth((request) => {
+export default auth(async (request) => {
+  // 1. IP Rate Limiting
+  const ip = getClientIp(request);
+  const rateLimitResult = await checkRateLimit({
+    key: `ip:${ip}`,
+    limit: 60,
+    windowMs: 60 * 1000,
+  });
+
+  if (!rateLimitResult.allowed) {
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: {
+        "Retry-After": rateLimitResult.retryAfterSeconds.toString(),
+      },
+    });
+  }
+
+  // 2. CSP & Security Nonce
   const nonce = btoa(crypto.randomUUID());
   const csp = buildCsp(nonce);
 
-  // Forward the nonce and CSP on the *request* so Next.js stamps the nonce onto
-  // the framework's own inline scripts; then also set CSP on the response.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
@@ -124,27 +130,6 @@ const authMiddleware = auth((request) => {
 
   return pass();
 });
-
-export default async function proxy(request: NextRequest, event: NextFetchEvent) {
-  const ip = getClientIp(request);
-  const rateLimitResult = await checkRateLimit({
-    key: `ip:${ip}`,
-    limit: 60,
-    windowMs: 60 * 1000,
-  });
-
-  if (!rateLimitResult.allowed) {
-    return new NextResponse("Too Many Requests", { 
-      status: 429,
-      headers: {
-        "Retry-After": rateLimitResult.retryAfterSeconds.toString()
-      }
-    });
-  }
-
-  // NextAuth types expect a specific request type, any bypasses compilation issues
-  return (authMiddleware as any)(request, event);
-}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)"],

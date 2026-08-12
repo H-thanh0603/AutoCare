@@ -135,6 +135,7 @@ export function LiveWorkflowSimulator() {
                 src={activeStep.image}
                 alt={activeStep.title}
                 fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
                 className="object-cover transition-transform duration-500 hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />

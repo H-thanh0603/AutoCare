@@ -155,6 +155,7 @@ export function DiagnosticTelemetryDemo() {
                   src={activeSpot.image}
                   alt={activeSpot.name}
                   fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
                   className="object-cover transition-transform duration-700 hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />

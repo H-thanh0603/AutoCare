@@ -146,7 +146,7 @@ export default async function HomePage() {
             <Link href="/dich-vu" className="hover:text-blue-600 transition-colors">Dịch vụ Gara</Link>
             <Link href="#cost-calculator" className="hover:text-blue-600 transition-colors">Dự toán chi phí</Link>
             <Link href="/ve-chung-toi" className="hover:text-blue-600 transition-colors">Về AutoCare</Link>
-            <Link href="/tai-khoan" className="hover:text-blue-600 transition-colors">Hồ sơ xe điện tử</Link>
+            <Link href="/tai-khoan" prefetch={false} className="hover:text-blue-600 transition-colors">Hồ sơ xe điện tử</Link>
           </nav>
 
           <div className="flex items-center gap-3">
