@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { QrCode, CheckCircle2, FileText, Camera, ShieldCheck, ArrowRight, UserCheck, Wrench } from "lucide-react";
+import { CheckCircle2, ShieldCheck, ArrowRight } from "lucide-react";
 
 const WORKFLOW_STEPS = [
   {
@@ -44,18 +44,18 @@ export function LiveWorkflowSimulator() {
   const activeStep = WORKFLOW_STEPS[activeStepIndex];
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden">
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-white">
       <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
-            <span className="px-3.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold uppercase tracking-wider inline-block mb-2">
+            <span className="px-3.5 py-1 rounded-full bg-blue-500/20 text-cyan-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider inline-block mb-2">
               Quy Trình 4 Bước Chuẩn Hãng
             </span>
-            <h3 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               Trải Nghiệm Dịch Vụ Minh Bạch Khác Biệt
             </h3>
           </div>
-          <p className="text-slate-500 text-sm max-w-md">
+          <p className="text-slate-400 text-sm max-w-md">
             Mọi thao tác đều được số hóa, giúp chủ xe nắm rõ từng con ốc, từng giọt dầu nhớt được thay thế trên xe.
           </p>
         </div>
@@ -70,19 +70,19 @@ export function LiveWorkflowSimulator() {
                 onClick={() => setActiveStepIndex(idx)}
                 className={`p-4 rounded-2xl text-left border transition-all duration-300 relative ${
                   isActive
-                    ? "bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-900/20 scale-102"
-                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300"
+                    ? "bg-gradient-to-br from-blue-900/80 to-slate-950 border-cyan-500 text-white shadow-xl shadow-cyan-500/10 scale-102"
+                    : "bg-slate-950/80 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span
-                    className={`font-mono font-black text-xs px-2 py-0.5 rounded-lg ${
-                      isActive ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"
+                    className={`font-mono font-black text-xs px-2.5 py-0.5 rounded-lg ${
+                      isActive ? "bg-cyan-500 text-slate-950 font-black" : "bg-slate-800 text-slate-400"
                     }`}
                   >
                     BƯỚC {item.step}
                   </span>
-                  {isActive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />}
+                  {isActive && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />}
                 </div>
                 <div className="font-bold text-sm leading-snug">{item.title}</div>
               </button>
@@ -91,37 +91,37 @@ export function LiveWorkflowSimulator() {
         </div>
 
         {/* Active Step Showcase Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-slate-50 rounded-3xl p-6 sm:p-8 border border-slate-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-slate-950/80 rounded-3xl p-6 sm:p-8 border border-slate-800/80">
           <div className="lg:col-span-6 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
-              <ShieldCheck className="size-4 text-emerald-600" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+              <ShieldCheck className="size-4 text-emerald-400" />
               <span>{activeStep.badge}</span>
             </div>
 
-            <h4 className="text-2xl sm:text-3xl font-black text-slate-900">
+            <h4 className="text-2xl sm:text-3xl font-black text-white">
               {activeStep.step}. {activeStep.title}
             </h4>
 
-            <p className="text-slate-600 text-base leading-relaxed">{activeStep.desc}</p>
+            <p className="text-slate-300 text-base leading-relaxed">{activeStep.desc}</p>
 
-            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center gap-3">
-              <CheckCircle2 className="size-6 text-blue-600 shrink-0" />
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm flex items-center gap-3">
+              <CheckCircle2 className="size-6 text-cyan-400 shrink-0" />
               <div className="text-sm">
-                <strong className="text-slate-900 block">Cam kết độc quyền AutoCare:</strong>
-                <span className="text-slate-500">{activeStep.highlight}</span>
+                <strong className="text-white block">Cam kết độc quyền AutoCare:</strong>
+                <span className="text-slate-400">{activeStep.highlight}</span>
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setActiveStepIndex((prev) => (prev > 0 ? prev - 1 : 3))}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 font-bold text-xs hover:bg-slate-800 hover:text-white transition-colors"
               >
                 ← Bước trước
               </button>
               <button
                 onClick={() => setActiveStepIndex((prev) => (prev < 3 ? prev + 1 : 0))}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-xs hover:from-blue-500 hover:to-cyan-400 transition-colors flex items-center gap-1.5 shadow-md shadow-cyan-500/20"
               >
                 <span>Bước tiếp theo</span>
                 <ArrowRight className="size-3.5" />
@@ -130,16 +130,16 @@ export function LiveWorkflowSimulator() {
           </div>
 
           <div className="lg:col-span-6">
-            <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden shadow-xl border-4 border-white">
+            <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-700">
               <Image
                 src={activeStep.image}
                 alt={activeStep.title}
                 fill
                 className="object-cover transition-transform duration-500 hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 text-white">
-                <span className="text-xs font-mono bg-blue-600/90 backdrop-blur-sm px-2.5 py-1 rounded-lg font-bold">
+                <span className="text-xs font-mono bg-blue-600/90 backdrop-blur-sm px-3 py-1 rounded-lg font-bold">
                   Ảnh Chụp Quy Trình Thực Tế
                 </span>
               </div>
