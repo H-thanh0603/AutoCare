@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Activity, BatteryCharging, CheckCircle, AlertTriangle, ShieldCheck, Gauge, Wrench, ChevronRight, Zap } from "lucide-react";
+import { Activity, ShieldCheck, AlertTriangle, ChevronRight, Zap } from "lucide-react";
 
 interface DiagnosticHotspot {
   id: string;
@@ -72,32 +72,32 @@ export function DiagnosticTelemetryDemo() {
   const [activeSpot, setActiveSpot] = useState<DiagnosticHotspot>(HOTSPOTS[0]);
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden text-white">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-10 shadow-xl relative overflow-hidden text-slate-900">
+      {/* Background soft ambient decoration */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/80 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
           <div>
-            <span className="px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
-              <Activity className="size-3.5 text-blue-400" />
+            <span className="px-3.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-2">
+              <Activity className="size-3.5 text-blue-600" />
               AutoCare Health-Telemetry™
             </span>
-            <h3 className="text-2xl sm:text-3xl font-black text-white">
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900">
               Hồ Sơ Sức Khỏe Xe Điện Tử & Telemetry Thời Gian Thực
             </h3>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1">
               Khám phá dữ liệu chẩn đoán kỹ thuật số được lưu trữ vĩnh viễn trên tài khoản của bạn.
             </p>
           </div>
 
-          <div className="bg-slate-900 border border-slate-700/80 px-4 py-2.5 rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-mono font-black text-sm">
+          <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-mono font-black text-sm shadow-md shadow-blue-500/20">
               VIN
             </div>
             <div>
               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Mã Hồ Sơ Điện Tử</div>
-              <div className="text-xs font-mono font-bold text-white">VN-AC-2026-9871</div>
+              <div className="text-xs font-mono font-bold text-slate-900">VN-AC-2026-9871</div>
             </div>
           </div>
         </div>
@@ -117,28 +117,28 @@ export function DiagnosticTelemetryDemo() {
                   onClick={() => setActiveSpot(spot)}
                   className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 flex items-center justify-between gap-3 ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-900/60 to-slate-900 border-blue-500 shadow-xl shadow-blue-600/20 translate-x-1"
-                      : "bg-slate-900/60 border-slate-800/80 hover:bg-slate-800 hover:border-slate-700"
+                      ? "bg-gradient-to-r from-blue-50 to-indigo-50/50 border-blue-500 shadow-md shadow-blue-500/10 translate-x-1"
+                      : "bg-slate-50/60 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3.5">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                         spot.status === "ATTENTION"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                          : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          ? "bg-amber-100 text-amber-800 border border-amber-300"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-300"
                       }`}
                     >
                       {spot.healthScore}%
                     </div>
                     <div>
-                      <div className="text-sm font-bold text-white leading-tight">{spot.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{spot.category}</div>
+                      <div className="text-sm font-bold text-slate-900 leading-tight">{spot.name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{spot.category}</div>
                     </div>
                   </div>
                   <ChevronRight
                     className={`size-5 transition-transform ${
-                      isActive ? "text-blue-400 translate-x-1" : "text-slate-600"
+                      isActive ? "text-blue-600 translate-x-1" : "text-slate-400"
                     }`}
                   />
                 </div>
@@ -148,7 +148,7 @@ export function DiagnosticTelemetryDemo() {
 
           {/* Right: Telemetry Visual Card with Real Image */}
           <div className="lg:col-span-7">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative text-white">
               {/* Photo Banner with Tag */}
               <div className="relative h-64 sm:h-72 w-full overflow-hidden">
                 <Image
@@ -168,12 +168,12 @@ export function DiagnosticTelemetryDemo() {
 
                 <div className="absolute top-4 right-4">
                   {activeSpot.status === "ATTENTION" ? (
-                    <span className="px-3 py-1 rounded-full bg-amber-500/90 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-lg">
+                    <span className="px-3 py-1 rounded-full bg-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-lg">
                       <AlertTriangle className="size-3.5" />
                       CẦN BẢO DƯỠNG
                     </span>
                   ) : (
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/90 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-lg">
+                    <span className="px-3 py-1 rounded-full bg-emerald-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-lg">
                       <ShieldCheck className="size-3.5" />
                       HOẠT ĐỘNG HOÀN HẢO
                     </span>
@@ -187,13 +187,13 @@ export function DiagnosticTelemetryDemo() {
               </div>
 
               {/* Details and Actions */}
-              <div className="p-6 space-y-4">
-                <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-2">
+              <div className="p-6 space-y-4 bg-slate-950">
+                <div className="bg-slate-900 rounded-2xl p-4 border border-slate-800 space-y-2">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phân tích kỹ thuật:</div>
                   <p className="text-sm text-slate-200 leading-relaxed">{activeSpot.description}</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
                   <div className="flex items-center gap-2 text-xs text-amber-300">
                     <Zap className="size-4 shrink-0 text-amber-400" />
                     <span>Đề xuất: <strong>{activeSpot.actionRequired}</strong></span>

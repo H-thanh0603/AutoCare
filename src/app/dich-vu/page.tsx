@@ -102,38 +102,38 @@ export default async function ServicesPage() {
   const portalHref = user ? (isStaff(user) ? "/bang-dieu-khien" : "/tai-khoan") : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
       {/* Main Navigation Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-xl shadow-2xl">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-all duration-300">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <Car className="size-6 text-cyan-400 group-hover:text-white transition-colors" aria-hidden="true" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-all duration-300">
+              <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
+                <Car className="size-6 text-blue-600" aria-hidden="true" />
               </div>
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-2xl tracking-tight text-white group-hover:text-cyan-400 transition-colors">
-                AutoCare<span className="text-blue-500">.vn</span>
+              <span className="font-black text-2xl tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+                AutoCare<span className="text-blue-600">.vn</span>
               </span>
-              <span className="text-[10px] text-blue-300 font-bold tracking-widest uppercase -mt-1">
+              <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase -mt-1">
                 Bảng Giá Dịch Vụ Chuẩn 5★
               </span>
             </div>
           </Link>
 
-          <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-300">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">Trang chủ</Link>
-            <Link href="/dich-vu" className="text-cyan-400 font-bold hover:text-white transition-colors">Dịch vụ Gara</Link>
-            <Link href="/ve-chung-toi" className="hover:text-cyan-400 transition-colors">Về AutoCare</Link>
-            <Link href="/tai-khoan" className="hover:text-cyan-400 transition-colors">Hồ sơ xe điện tử</Link>
+          <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-700">
+            <Link href="/" className="hover:text-blue-600 transition-colors">Trang chủ</Link>
+            <Link href="/dich-vu" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">Dịch vụ Gara</Link>
+            <Link href="/ve-chung-toi" className="hover:text-blue-600 transition-colors">Về AutoCare</Link>
+            <Link href="/tai-khoan" className="hover:text-blue-600 transition-colors">Hồ sơ xe điện tử</Link>
           </nav>
 
           <div className="flex items-center gap-3">
             {portalHref ? (
               <Button
                 render={<Link href={portalHref} />}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-5 h-11 rounded-xl shadow-lg shadow-blue-600/30"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 h-11 rounded-xl shadow-md shadow-blue-500/20"
               >
                 <span>Vào Hệ Thống</span>
                 <ArrowRight className="size-4 ml-1.5" />
@@ -141,7 +141,7 @@ export default async function ServicesPage() {
             ) : (
               <Button
                 render={<Link href="/dang-ky" />}
-                className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black px-5 h-11 rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:scale-105"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-5 h-11 rounded-xl shadow-md shadow-blue-600/25 transition-all hover:scale-105"
               >
                 <Sparkles className="size-4 mr-1.5 text-amber-300" />
                 <span>Đặt Lịch Hẹn Ngay</span>
@@ -154,16 +154,16 @@ export default async function ServicesPage() {
       <main className="py-12 space-y-16">
         {/* Banner Hero */}
         <section aria-label="Dịch vụ hero" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border border-blue-500/30 text-white rounded-3xl p-8 sm:p-14 shadow-2xl relative overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white rounded-3xl p-8 sm:p-14 shadow-xl relative overflow-hidden">
             <div className="relative z-10 space-y-4 max-w-3xl">
-              <span className="px-3.5 py-1.5 rounded-full bg-blue-500/20 text-cyan-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider inline-block">
+              <span className="px-3.5 py-1.5 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-wider inline-block">
                 Bảng Giá Niêm Yết Minh Bạch 100%
               </span>
               <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
                 Danh Mục Dịch Vụ & Bảng Giá Gara Chuẩn 5 Sao
               </h1>
-              <p className="text-slate-300 text-base leading-relaxed">
-                Tất cả gói bảo dưỡng đều có quy trình kiểm tra chuẩn hãng, báo giá chi tiết từng hạng mục trước khi thi công và lưu vết vĩnh viễn trên <strong className="text-cyan-300">Hồ Sơ Sức Khỏe Xe Điện Tử</strong>.
+              <p className="text-blue-100 text-base leading-relaxed">
+                Tất cả gói bảo dưỡng đều có quy trình kiểm tra chuẩn hãng, báo giá chi tiết từng hạng mục trước khi thi công và lưu vết vĩnh viễn trên <strong>Hồ Sơ Sức Khỏe Xe Điện Tử</strong>.
               </p>
             </div>
           </div>
@@ -173,21 +173,21 @@ export default async function ServicesPage() {
         <section aria-label="Bảng giá dịch vụ" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           {SERVICES.map((cat, cIdx) => (
             <div key={cIdx} className="space-y-6">
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-                <span className="w-3 h-8 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full" />
-                <h2 className="text-2xl font-black text-white tracking-tight">{cat.category}</h2>
+              <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+                <span className="w-3 h-8 bg-blue-600 rounded-full" />
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{cat.category}</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {cat.items.map((item, iIdx) => (
                   <div
                     key={iIdx}
-                    className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl hover:border-cyan-500/50 hover:shadow-2xl transition-all duration-300 flex flex-col justify-between"
+                    className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
                   >
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
-                        <h3 className="font-extrabold text-xl text-white">{item.name}</h3>
-                        <span className="px-3 py-1 bg-slate-950 border border-slate-700 text-cyan-300 font-mono text-xs font-bold rounded-full">
+                        <h3 className="font-extrabold text-xl text-slate-900">{item.name}</h3>
+                        <span className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-xs font-bold rounded-full">
                           ⏱️ {item.duration}
                         </span>
                       </div>
@@ -195,22 +195,22 @@ export default async function ServicesPage() {
                       <div className="space-y-2 pt-2">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hạng mục kiểm tra & thực hiện:</p>
                         {item.checklist.map((pt, pIdx) => (
-                          <div key={pIdx} className="flex items-start gap-2.5 text-xs text-slate-300">
-                            <CheckCircle2 className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <div key={pIdx} className="flex items-start gap-2.5 text-xs text-slate-700">
+                            <CheckCircle2 className="size-4 text-emerald-600 shrink-0 mt-0.5" />
                             <span>{pt}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="pt-6 mt-6 border-t border-slate-800 flex items-center justify-between">
+                    <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
                       <div>
                         <span className="text-[10px] text-slate-400 font-semibold block uppercase">Giá niêm yết</span>
-                        <span className="text-lg font-black text-emerald-400 font-mono">{item.price}</span>
+                        <span className="text-lg font-black text-blue-600 font-mono">{item.price}</span>
                       </div>
                       <Button
                         render={<Link href="/dang-ky" />}
-                        className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl px-5 shadow-md shadow-blue-500/20"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 shadow-sm"
                       >
                         Đặt Lịch Hẹn
                       </Button>
@@ -224,7 +224,7 @@ export default async function ServicesPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950 py-8 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 bg-slate-900 py-8 text-center text-xs text-slate-400">
         © {new Date().getFullYear()} AutoCare.vn. Bảng giá niêm yết áp dụng tại toàn bộ hệ thống Gara đối tác AutoCare.
       </footer>
     </div>

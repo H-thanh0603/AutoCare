@@ -34,17 +34,17 @@ export function InteractiveFaqGuarantee() {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl text-white">
+    <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-10 shadow-xl text-slate-900">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="text-center space-y-3">
-          <span className="px-3.5 py-1 rounded-full bg-blue-500/20 text-cyan-300 border border-blue-400/30 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5">
+          <span className="px-3.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5">
             <HelpCircle className="size-3.5" />
             Giải Đáp Thắc Mắc
           </span>
-          <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h3 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
             Câu Hỏi Thường Gặp Của Chủ Xe
           </h3>
-          <p className="text-slate-400 text-sm max-w-xl mx-auto">
+          <p className="text-slate-500 text-sm max-w-xl mx-auto">
             Những điều bạn cần biết trước khi mang xe đến chăm sóc tại hệ thống AutoCare.
           </p>
         </div>
@@ -55,27 +55,27 @@ export function InteractiveFaqGuarantee() {
             return (
               <div
                 key={idx}
-                className="bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-all duration-200"
+                className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-200"
               >
                 <button
                   onClick={() => toggle(idx)}
-                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-white hover:text-cyan-400 text-base transition-colors"
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-slate-900 hover:text-blue-600 text-base transition-colors"
                 >
                   <span className="flex items-center gap-3.5">
-                    <span className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 text-cyan-400 flex items-center justify-center text-xs shrink-0 font-mono font-black">
+                    <span className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs shrink-0 font-mono font-black">
                       {idx + 1}
                     </span>
                     {faq.q}
                   </span>
                   <ChevronDown
-                    className={`size-5 text-slate-500 shrink-0 transition-transform duration-300 ${
-                      isOpen ? "rotate-180 text-cyan-400" : ""
+                    className={`size-5 text-slate-400 shrink-0 transition-transform duration-300 ${
+                      isOpen ? "rotate-180 text-blue-600" : ""
                     }`}
                   />
                 </button>
 
                 {isOpen && (
-                  <div className="px-5 pb-5 pt-2 text-slate-300 text-sm leading-relaxed border-t border-slate-800/80 pl-16">
+                  <div className="px-5 pb-5 pt-2 text-slate-600 text-sm leading-relaxed border-t border-slate-200/60 pl-16">
                     {faq.a}
                   </div>
                 )}
@@ -86,27 +86,27 @@ export function InteractiveFaqGuarantee() {
 
         {/* 3 Guarantees Box */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-          <div className="p-4 rounded-2xl bg-slate-950/90 border border-blue-500/30 flex items-start gap-3">
-            <ShieldCheck className="size-6 text-cyan-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-start gap-3">
+            <ShieldCheck className="size-6 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold text-white text-xs uppercase">Bảo Hành Dài Hạn</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">Cam kết bảo hành phụ tùng 12 tháng 1 đổi 1.</div>
+              <div className="font-bold text-slate-900 text-xs uppercase">Bảo Hành Dài Hạn</div>
+              <div className="text-[11px] text-slate-600 mt-0.5">Cam kết bảo hành phụ tùng 12 tháng 1 đổi 1.</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/30 flex items-start gap-3">
-            <CheckCircle className="size-6 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-start gap-3">
+            <CheckCircle className="size-6 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold text-white text-xs uppercase">Không Phát Sinh Chi Phí</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">Giá chuẩn niêm yết, không phụ thu ngoài báo giá.</div>
+              <div className="font-bold text-slate-900 text-xs uppercase">Không Phát Sinh Chi Phí</div>
+              <div className="text-[11px] text-slate-600 mt-0.5">Giá chuẩn niêm yết, không phụ thu ngoài báo giá.</div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/90 border border-amber-500/30 flex items-start gap-3">
-            <Sparkles className="size-6 text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-100 flex items-start gap-3">
+            <Sparkles className="size-6 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <div className="font-bold text-white text-xs uppercase">Rửa Xe & Khử Khuẩn</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">Miễn phí rửa xe hút bụi cho mọi hóa đơn bảo dưỡng.</div>
+              <div className="font-bold text-slate-900 text-xs uppercase">Rửa Xe & Khử Khuẩn</div>
+              <div className="text-[11px] text-slate-600 mt-0.5">Miễn phí rửa xe hút bụi cho mọi hóa đơn bảo dưỡng.</div>
             </div>
           </div>
         </div>
