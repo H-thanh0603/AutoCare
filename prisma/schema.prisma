@@ -429,11 +429,14 @@ model RepairOrderSequence {
   id        String @id @default(uuid())
   garageId  String
   year      Int
+  /// "REPAIR_ORDER" | "INVOICE" — invoices and repair orders must have
+  /// independent sequential numbers (VN accounting expects gap-free series).
+  docType   String @default("REPAIR_ORDER")
   nextValue Int    @default(1)
 
   garage Garage @relation(fields: [garageId], references: [id])
 
-  @@unique([garageId, year])
+  @@unique([garageId, year, docType])
   @@map("repair_order_sequences")
 }
 

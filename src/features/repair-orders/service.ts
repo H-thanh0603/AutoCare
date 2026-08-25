@@ -8,6 +8,8 @@ import { prisma, type PrismaTx } from "@/lib/prisma";
 import { assertAppointmentTransition } from "@/lib/transitions";
 import { validateMileageChange } from "@/features/vehicles/mileage";
 
+const REPAIR_ORDER_SEQUENCE_DOC_TYPE = "REPAIR_ORDER";
+
 async function lockGarageAppointment(
   tx: PrismaTx,
   garageId: string,
@@ -23,8 +25,10 @@ async function lockGarageAppointment(
 
 async function nextRepairOrderCode(tx: PrismaTx, garageId: string, year: number): Promise<string> {
   const row = await tx.repairOrderSequence.upsert({
-    where: { garageId_year: { garageId, year } },
-    create: { garageId, year, nextValue: 2 },
+    where: {
+      garageId_year_docType: { garageId, year, docType: REPAIR_ORDER_SEQUENCE_DOC_TYPE },
+    },
+    create: { garageId, year, docType: REPAIR_ORDER_SEQUENCE_DOC_TYPE, nextValue: 2 },
     update: { nextValue: { increment: 1 } },
     select: { nextValue: true },
   });

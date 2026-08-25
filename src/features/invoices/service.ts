@@ -6,10 +6,14 @@ import { addMoney, subtractMoney } from "@/lib/money";
 import { PrismaTx, prisma } from "@/lib/prisma";
 import { assertInvoiceTransition, deriveInvoiceStatus } from "@/lib/transitions";
 
+const INVOICE_SEQUENCE_DOC_TYPE = "INVOICE";
+
 async function nextInvoiceCode(tx: PrismaTx, garageId: string, year: number): Promise<string> {
   const row = await tx.repairOrderSequence.upsert({
-    where: { garageId_year: { garageId, year } },
-    create: { garageId, year, nextValue: 2 },
+    where: {
+      garageId_year_docType: { garageId, year, docType: INVOICE_SEQUENCE_DOC_TYPE },
+    },
+    create: { garageId, year, docType: INVOICE_SEQUENCE_DOC_TYPE, nextValue: 2 },
     update: { nextValue: { increment: 1 } },
     select: { nextValue: true },
   });
