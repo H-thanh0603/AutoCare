@@ -253,8 +253,18 @@ export async function recordPayment(input: {
       throw new BusinessRuleError("Cần phát hành hóa đơn trước khi ghi nhận thanh toán.");
     }
 
+    // Serialize concurrent payments on this invoice row so read-compute-write
+    // below cannot lose updates (two cashiers recording payment at once).
+    await tx.$queryRaw`SELECT id FROM "invoices" WHERE id = ${invoice.id} FOR UPDATE`;
+
     let newPaidAmount = invoice.paidAmount;
     if (type === PaymentType.PAYMENT || type === PaymentType.DEPOSIT) {
+      const remaining = subtractMoney(invoice.totalAmount, invoice.paidAmount);
+      if (amount > remaining) {
+        throw new BusinessRuleError(
+          `Số tiền vượt quá số dư còn lại của hóa đơn (còn ${remaining.toLocaleString("vi-VN")} ₫).`,
+        );
+      }
       newPaidAmount = addMoney(invoice.paidAmount, amount);
     } else if (type === PaymentType.REFUND) {
       if (amount > invoice.paidAmount) {

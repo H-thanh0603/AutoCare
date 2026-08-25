@@ -1,7 +1,7 @@
 import { InventoryTxType } from "@/generated/prisma/enums";
 import { assertSufficientStock } from "@/features/inventory/domain";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
-import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { assertRepairOrderTransition, assertWorkTaskTransition } from "@/lib/transitions";
 
@@ -211,15 +211,26 @@ export async function issuePartForTask(input: {
       throw err;
     }
 
-    // Deduct stock and record transaction
-    const newStock = part.quantityInStock - quantity;
-    await tx.part.update({
-      where: { id: part.id },
+    // Deduct stock atomically: the guard lives in the WHERE clause so two
+    // concurrent issues cannot both pass a stale read-compute-write check.
+    const deducted = await tx.part.updateMany({
+      where: {
+        id: part.id,
+        ...(allowNegativeStock ? {} : { quantityInStock: { gte: quantity } }),
+      },
       data: {
-        quantityInStock: newStock,
+        quantityInStock: { decrement: quantity },
         version: { increment: 1 },
       },
     });
+    if (deducted.count !== 1) {
+      throw new BusinessRuleError("Không đủ tồn kho để xuất phụ tùng.");
+    }
+    const freshPart = await tx.part.findUniqueOrThrow({
+      where: { id: part.id },
+      select: { quantityInStock: true },
+    });
+    const newStock = freshPart.quantityInStock;
 
     const txRecord = await tx.inventoryTransaction.create({
       data: {
@@ -285,11 +296,10 @@ export async function receivePartStock(input: {
     });
     if (!part) throw new NotFoundError("Không tìm thấy phụ tùng.");
 
-    const newStock = part.quantityInStock + quantity;
     await tx.part.update({
       where: { id: part.id },
       data: {
-        quantityInStock: newStock,
+        quantityInStock: { increment: quantity },
         ...(unitCost !== undefined ? { costPrice: unitCost } : {}),
         version: { increment: 1 },
       },
@@ -389,11 +399,10 @@ export async function returnPartStock(input: {
     });
     if (!part) throw new NotFoundError("Không tìm thấy phụ tùng.");
 
-    const newStock = part.quantityInStock + quantity;
     await tx.part.update({
       where: { id: part.id },
       data: {
-        quantityInStock: newStock,
+        quantityInStock: { increment: quantity },
         version: { increment: 1 },
       },
     });
@@ -417,7 +426,7 @@ export async function returnPartStock(input: {
         entityId: txRecord.id,
         garageId,
         actorUserId,
-        after: { partId: part.id, workTaskId, quantityReturned: quantity, newStock },
+        after: { partId: part.id, workTaskId, quantityReturned: quantity, newStock: part.quantityInStock + quantity },
       },
       tx,
     );
