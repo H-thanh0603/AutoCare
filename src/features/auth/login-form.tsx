@@ -27,6 +27,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/**
+ * Demo quick-select accounts. Compiled into the client bundle ONLY when
+ * NEXT_PUBLIC_ENABLE_DEMO_ACCOUNTS="1" is set at build time (dev/.env only).
+ * Never enable this in production — it exposes seeded staff credentials.
+ */
+const DEMO_ENABLED = process.env.NEXT_PUBLIC_ENABLE_DEMO_ACCOUNTS === "1";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "";
+
 const DEMO_ACCOUNTS = [
   { role: "👔 Quản lý Gara", email: "quanly@garathanhdat.vn" },
   { role: "📋 Lễ tân", email: "letan@garathanhdat.vn" },
@@ -53,7 +61,7 @@ export function LoginForm({ next }: { next?: string }) {
 
   const selectDemoAccount = (email: string) => {
     setValue("email", email, { shouldValidate: true });
-    setValue("password", "AutoCare@2026", { shouldValidate: true });
+    if (DEMO_PASSWORD) setValue("password", DEMO_PASSWORD, { shouldValidate: true });
     setFormError(null);
   };
 
@@ -97,11 +105,12 @@ export function LoginForm({ next }: { next?: string }) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Quick Demo Account Buttons */}
+        {/* Quick Demo Account Buttons — dev only, gated by NEXT_PUBLIC_ENABLE_DEMO_ACCOUNTS */}
+        {DEMO_ENABLED ? (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 space-y-2.5 shadow-sm">
           <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-900">
             <Sparkles className="size-4 text-amber-500 fill-amber-400" />
-            <span>Chọn nhanh tài khoản Demo (Mật khẩu: AutoCare@2026)</span>
+            <span>Chọn nhanh tài khoản Demo{DEMO_PASSWORD ? " (Mật khẩu demo đã cấu hình)" : ""}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
             {DEMO_ACCOUNTS.map((acc) => (
@@ -117,6 +126,7 @@ export function LoginForm({ next }: { next?: string }) {
             ))}
           </div>
         </div>
+        ) : null}
 
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
           {formError ? (
