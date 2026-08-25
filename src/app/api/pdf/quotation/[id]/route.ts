@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { renderToStream } from "@react-pdf/renderer";
-import { QuotationDocument } from "@/lib/pdf/quotation-document";
+import { QuotationDocument, type QuotationDocumentProps } from "@/lib/pdf/quotation-document";
 import React from "react";
 import { getSessionUser } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
@@ -27,7 +27,7 @@ export async function GET(
     // TODO: Fetch quotation data from database using Prisma based on ID
     // (must be scoped: findFirst({ where: { id, garageId } })).
     // Dummy data for now
-    const dummyQuotation = {
+    const quotation: QuotationDocumentProps = {
       quotationId: id,
       customerName: "Nguyễn Văn Khách",
       vehiclePlate: "51H-123.45",
@@ -40,11 +40,9 @@ export async function GET(
       totalAmount: 1300000,
     };
 
-    const stream = await renderToStream(
-      React.createElement(QuotationDocument, dummyQuotation) as any
-    );
+    const stream = await renderToStream(React.createElement(QuotationDocument, quotation));
 
-    return new Response(stream as any, {
+    return new Response(stream, {
       headers: {
         "Content-Type": "application/pdf",
         // Force download or inline view
