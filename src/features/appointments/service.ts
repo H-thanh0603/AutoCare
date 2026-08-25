@@ -71,17 +71,23 @@ async function lockPortalAppointment(
   if (rows.length === 0) throw new NotFoundError("Không tìm thấy lịch hẹn.");
 }
 
-async function createPortalAppointment(
+async function createPortalAppointmentInTx(
+  db: PrismaTx,
   userId: string,
   input: AppointmentInput,
-  tx: PrismaTx | undefined = undefined,
 ): Promise<{ id: string }> {
-  const db = tx ?? prisma;
   const owner = await getCurrentPortalVehicleOwner(userId, input.vehicleId, db);
   const settings = await getGarageAppointmentSettings(owner.garageId, db);
   const endsAt = assertAppointmentSlot(settings, input.scheduledAt);
 
   if (settings.maxConcurrentPerSlot > 0) {
+    // Serialize concurrent bookings of the same garage slot: a plain
+    // count-then-insert lets N simultaneous requests all observe "slot not
+    // full" and oversubscribe it. The transaction-scoped advisory lock is
+    // keyed on (garage, slot start) so only same-slot bookings contend.
+    const slotEpochSeconds = Math.floor(input.scheduledAt.getTime() / 1000);
+    await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${owner.garageId}), ${slotEpochSeconds}::int)`;
+
     const overlapping = await db.appointment.count({
       where: {
         garageId: owner.garageId,
@@ -114,6 +120,17 @@ async function createPortalAppointment(
     }
     throw error;
   }
+}
+
+async function createPortalAppointment(
+  userId: string,
+  input: AppointmentInput,
+  tx: PrismaTx | undefined = undefined,
+): Promise<{ id: string }> {
+  // The capacity check and the insert must share one transaction so the
+  // advisory lock above actually guards the read-then-write pair.
+  if (tx) return createPortalAppointmentInTx(tx, userId, input);
+  return prisma.$transaction((db) => createPortalAppointmentInTx(db, userId, input));
 }
 
 export async function createCustomerAppointment(
