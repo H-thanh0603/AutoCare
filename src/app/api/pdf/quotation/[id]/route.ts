@@ -40,9 +40,11 @@ export async function GET(
       totalAmount: 1300000,
     };
 
-    const stream = await renderToStream(React.createElement(QuotationDocument, quotation));
+    const stream = await renderToStream(
+      React.createElement(QuotationDocument, quotation) as React.ReactElement,
+    );
 
-    return new Response(stream, {
+    return new Response(stream as ReadableStream<Uint8Array>, {
       headers: {
         "Content-Type": "application/pdf",
         // Force download or inline view

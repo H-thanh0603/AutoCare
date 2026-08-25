@@ -102,7 +102,7 @@ interface QuotationItem {
   total: number;
 }
 
-interface QuotationDocumentProps {
+export interface QuotationDocumentProps {
   quotationId: string;
   customerName: string;
   vehiclePlate: string;
