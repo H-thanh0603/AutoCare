@@ -67,7 +67,7 @@ export async function addWorkLogAction(workTaskId: string, note: string, minutes
 export async function syncWorkTasksAction(quotationId: string) {
   return runAction(async () => {
     const user = requirePermission(await getSessionUser(), "work-task:write");
-    requireGarageScope(user);
-    return syncWorkTasksFromQuotation(quotationId);
+    const { garageId } = requireGarageScope(user);
+    return syncWorkTasksFromQuotation(garageId, quotationId);
   });
 }

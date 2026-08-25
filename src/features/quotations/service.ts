@@ -309,7 +309,7 @@ export async function decideQuotationItem(
     );
 
     if (input.status === "APPROVED") {
-      await syncWorkTasksFromQuotation(item.quotationId, tx);
+      await syncWorkTasksFromQuotation(item.quotation.garageId, item.quotationId, tx);
     }
   });
 }
@@ -379,7 +379,7 @@ export async function decideQuotationItemAsManager(
     );
 
     if (input.status === "APPROVED") {
-      await syncWorkTasksFromQuotation(item.quotationId, tx);
+      await syncWorkTasksFromQuotation(garageId, item.quotationId, tx);
     }
   });
 }

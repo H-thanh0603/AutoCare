@@ -5,11 +5,12 @@ import { PrismaClientOrTx, prisma } from "@/lib/prisma";
 import { assertRepairOrderTransition, assertWorkTaskTransition } from "@/lib/transitions";
 
 export async function syncWorkTasksFromQuotation(
+  garageId: string,
   quotationId: string,
   tx: PrismaClientOrTx = prisma,
 ): Promise<number> {
-  const quotation = await tx.quotation.findUnique({
-    where: { id: quotationId },
+  const quotation = await tx.quotation.findFirst({
+    where: { id: quotationId, garageId },
     include: {
       items: { where: { status: "APPROVED" } },
       repairOrder: { select: { id: true, status: true, garageId: true } },
