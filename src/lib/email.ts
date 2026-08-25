@@ -16,7 +16,12 @@ export async function sendEmail({
   react: React.ReactElement;
 }) {
   if (!resend) {
-    console.warn("RESEND_API_KEY is not set. Email not sent.");
+    if (process.env.NODE_ENV === "production") {
+      // Fail loudly in production — a silently skipped email is worse than a
+      // failed job that BullMQ surfaces and retries.
+      throw new Error("RESEND_API_KEY chưa được cấu hình — không thể gửi email.");
+    }
+    console.warn("RESEND_API_KEY is not set. Email skipped (dev only).");
     return { success: true, dummy: true };
   }
 
