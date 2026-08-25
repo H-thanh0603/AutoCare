@@ -14,12 +14,21 @@ import { WorkTaskBoard } from "@/features/work-tasks/work-task-board";
 import { can } from "@/lib/rbac";
 import { formatVnd } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default async function RepairOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RepairOrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { user, garageId } = await requireStaffPermissionPage("/lenh-sua-chua", "repair-order:read");
   const order = await getRepairOrderDetail(garageId, (await params).id);
+  const formError = (await searchParams).error;
   const [inspection, quotations, workTasks, invoices, technicians] = await Promise.all([
     getInspectionForRepairOrder(garageId, order.id),
     listQuotationsForRepairOrder(garageId, order.id),
@@ -53,6 +62,13 @@ export default async function RepairOrderDetailPage({ params }: { params: Promis
           {order.vehicle.licensePlate} · {order.customer.name}
         </p>
       </div>
+
+      {formError ? (
+        <Alert variant="destructive" role="alert">
+          <AlertCircle className="size-4" aria-hidden="true" />
+          <AlertDescription className="font-semibold">{formError}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardHeader>

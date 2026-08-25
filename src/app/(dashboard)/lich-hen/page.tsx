@@ -9,8 +9,10 @@ import { appointmentStatusLabel } from "@/features/repair-orders/labels";
 import { checkInAppointmentFormAction } from "@/features/repair-orders/actions";
 import { can } from "@/lib/rbac";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 export const metadata: Metadata = { title: "Lịch hẹn · AutoCare" };
 
@@ -34,10 +36,11 @@ function toParam(date: Date): string {
 export default async function AppointmentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ngay?: string }>;
+  searchParams: Promise<{ ngay?: string; error?: string }>;
 }) {
+  const params = await searchParams;
   const { user, garageId } = await requireStaffPermissionPage("/lich-hen", "appointment:read");
-  const day = parseDay((await searchParams).ngay);
+  const day = parseDay(params.ngay);
 
   const from = new Date(day);
   const to = new Date(day);
@@ -70,6 +73,13 @@ export default async function AppointmentsPage({
           </Button>
         </div>
       </div>
+
+      {params.error ? (
+        <Alert variant="destructive" role="alert">
+          <AlertCircle className="size-4" aria-hidden="true" />
+          <AlertDescription className="font-semibold">{params.error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -17,6 +17,7 @@ import { RATE_LIMITS, assertRateLimit } from "@/lib/rate-limit";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
 import { updateGarageAppointmentSettings } from "@/data/garages";
 import { parseAppointmentSettings } from "@/lib/appointment-settings";
+import { runStaffFormAction } from "@/lib/form-action";
 
 function formErrors(error: { issues: { path: PropertyKey[]; message: string }[] }): Record<string, string[]> {
   const fieldErrors: Record<string, string[]> = {};
@@ -104,15 +105,21 @@ export async function cancelGarageAppointmentAction(appointmentId: string, formD
 }
 
 export async function confirmAppointmentFormAction(formData: FormData): Promise<void> {
-  await confirmAppointmentAction(String(formData.get("appointmentId") ?? ""));
+  await runStaffFormAction("/lich-hen", () =>
+    confirmAppointmentAction(String(formData.get("appointmentId") ?? "")),
+  );
 }
 
 export async function noShowAppointmentFormAction(formData: FormData): Promise<void> {
-  await noShowAppointmentAction(String(formData.get("appointmentId") ?? ""));
+  await runStaffFormAction("/lich-hen", () =>
+    noShowAppointmentAction(String(formData.get("appointmentId") ?? "")),
+  );
 }
 
 export async function cancelGarageAppointmentFormAction(formData: FormData): Promise<void> {
-  await cancelGarageAppointmentAction(String(formData.get("appointmentId") ?? ""), formData);
+  await runStaffFormAction("/lich-hen", () =>
+    cancelGarageAppointmentAction(String(formData.get("appointmentId") ?? ""), formData),
+  );
 }
 
 export async function updateAppointmentSettingsFormAction(formData: FormData): Promise<void> {

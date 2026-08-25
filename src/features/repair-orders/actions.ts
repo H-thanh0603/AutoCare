@@ -13,6 +13,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
 import { requireGarageScope, requirePermission } from "@/lib/rbac";
+import { runStaffFormAction } from "@/lib/form-action";
 import { GarageRole } from "@/generated/prisma/enums";
 
 function receptionInput(formData: FormData) {
@@ -54,11 +55,13 @@ export async function createWalkInRepairOrderAction(formData: FormData): Promise
 }
 
 export async function checkInAppointmentFormAction(formData: FormData): Promise<void> {
-  await checkInAppointmentAction(String(formData.get("appointmentId") ?? ""), formData);
+  await runStaffFormAction("/lich-hen", () =>
+    checkInAppointmentAction(String(formData.get("appointmentId") ?? ""), formData),
+  );
 }
 
 export async function createWalkInRepairOrderFormAction(formData: FormData): Promise<void> {
-  await createWalkInRepairOrderAction(formData);
+  await runStaffFormAction("/lenh-sua-chua", () => createWalkInRepairOrderAction(formData));
 }
 
 export async function passQualityCheckAction(repairOrderId: string, note?: string): Promise<ActionResult<void>> {
