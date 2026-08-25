@@ -16,6 +16,12 @@ export async function generateVehicleServiceReminders(garageId: string): Promise
   reminders: ServiceReminderDTO[];
 }> {
   const vehicles = await prisma.vehicle.findMany({
+    where: {
+      deletedAt: null,
+      ownerships: {
+        some: { isCurrent: true, endedAt: null, customer: { garageId, deletedAt: null } },
+      },
+    },
     include: {
       ownerships: {
         where: { isCurrent: true },
