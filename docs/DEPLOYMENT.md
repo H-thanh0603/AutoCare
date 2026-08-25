@@ -46,9 +46,14 @@ FILE_STORAGE_DRIVER="local"                   # local | s3 | supabase | cloudina
 ```bash
 pnpm install
 pnpm prisma migrate dev      # áp dụng migration, tạo DB schema
-pnpm prisma db seed          # seed dữ liệu demo tiếng Việt (prisma/seed.ts)
+pnpm db:seed                 # CHỈ cho dev: nạp dữ liệu demo (prisma/seed.ts)
 pnpm dev                     # http://localhost:3000
 ```
+
+> ⚠️ **Tuyệt đối KHÔNG chạy `db:seed` trên database production.** Seed xóa toàn bộ dữ liệu
+> (`deleteMany` mọi bảng) và tạo tài khoản với mật khẩu demo công khai. Từ nay script seed
+> tự từ chối chạy khi `NODE_ENV=production` trừ khi đặt `ALLOW_DEMO_SEED="1"` một cách
+> rõ ràng.
 
 Các lệnh kiểm tra:
 
@@ -68,6 +73,9 @@ pnpm build
   (Vercel, Railway, VPS + Caddy...). Cookie session chỉ set `Secure` khi chạy qua HTTPS.
 - Database production: PostgreSQL managed (ví dụ Supabase, Neon, RDS) hoặc self-host — migration
   chạy bằng `prisma migrate deploy` (không dùng `migrate dev` ở production).
+- **Không chạy `prisma db seed` ở production** — seed chỉ dành cho môi trường dev (script đã tự
+  chặn, xem mục 1.3). Tài khoản admin/staff production phải được tạo bằng quy trình đăng ký
+  bình thường hoặc một script bootstrap riêng đọc mật khẩu từ secret manager.
 - File storage production: đổi `FILE_STORAGE_DRIVER` sang adapter S3-compatible/Supabase Storage/
   Cloudinary (xem D7) — không cần sửa domain layer.
 - Build: `pnpm build` rồi `pnpm start`, hoặc deploy serverless (Vercel) nếu phù hợp với chi phí dự

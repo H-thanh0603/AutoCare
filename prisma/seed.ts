@@ -13,7 +13,14 @@ import { hashPassword } from "../src/lib/password";
 import { calculateInvoiceTotals, calculateLineTotal } from "../src/lib/money";
 import { prisma } from "../src/lib/prisma";
 
-const DEMO_PASSWORD = "AutoCare@2026";
+if (process.env.NODE_ENV === "production" && !process.env.ALLOW_DEMO_SEED) {
+  throw new Error(
+    "Từ chối chạy demo seed ở production. Seed xóa toàn bộ dữ liệu và tạo tài khoản với mật khẩu công khai. " +
+      'Chỉ chạy khi hiểu rõ rủi ro: đặt biến môi trường ALLOW_DEMO_SEED="1".',
+  );
+}
+
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "AutoCare@2026";
 
 /** Fixed clock so relative dates in the demo data stay consistent. */
 const NOW = new Date();
