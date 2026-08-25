@@ -8,6 +8,7 @@ import {
   assertQuotationTransition,
   assertQuotationItemTransition,
   assertRepairOrderTransition,
+  assertWorkTaskTransition,
   deriveQuotationStatus,
   isQuotationEditable,
 } from "@/lib/transitions";
@@ -398,8 +399,17 @@ export async function createSupplementaryQuotation(
     if (!parent) throw new NotFoundError("Không tìm thấy báo giá gốc.");
 
     if (input.workTaskId) {
+      // Scope the task to the caller's garage and respect the work-task state
+      // machine — a bare unscoped update would allow cross-tenant writes and
+      // illegal transitions (e.g. dragging COMPLETED back to WAITING_APPROVAL).
+      const task = await tx.workTask.findFirst({
+        where: { id: input.workTaskId, garageId },
+        select: { id: true, status: true },
+      });
+      if (!task) throw new NotFoundError("Không tìm thấy hạng mục công việc.");
+      assertWorkTaskTransition(task.status, "WAITING_APPROVAL");
       await tx.workTask.update({
-        where: { id: input.workTaskId },
+        where: { id: task.id },
         data: { status: "WAITING_APPROVAL" },
       });
     }
