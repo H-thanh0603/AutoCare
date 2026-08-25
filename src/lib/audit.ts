@@ -38,6 +38,7 @@ export const AUDIT_ACTIONS = {
   INSPECTION_STARTED: "inspection.started",
   INSPECTION_UPDATED: "inspection.updated",
   MEDIA_UPLOADED: "media.uploaded",
+  CUSTOMER_RECORDS_CLAIMED: "customer.records_claimed",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
