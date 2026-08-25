@@ -41,10 +41,12 @@ export async function GET(
     };
 
     const stream = await renderToStream(
-      React.createElement(QuotationDocument, quotation) as React.ReactElement,
+      React.createElement(QuotationDocument, quotation) as Parameters<
+        typeof renderToStream
+      >[0],
     );
 
-    return new Response(stream as ReadableStream<Uint8Array>, {
+    return new Response(stream as unknown as ReadableStream<Uint8Array>, {
       headers: {
         "Content-Type": "application/pdf",
         // Force download or inline view
