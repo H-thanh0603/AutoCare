@@ -52,21 +52,17 @@ export async function createCustomerUser(
 }
 
 /**
- * Links pre-existing garage customer records to a freshly registered account.
+ * Links garage customer records matching the phone to a portal account.
  *
- * SECURITY: matching a phone number is NOT proof of ownership — anyone who
- * learns/guesses a walk-in customer's phone could otherwise instantly acquire
- * that person's service history and invoices. There is no OTP/SMS channel yet,
- * so this only runs when CUSTOMER_PHONE_AUTO_CLAIM="1" (dev/demo convenience).
- * Every claim leaves an audit trail for garage managers to review.
+ * SECURITY: only call this AFTER an OTP verified control of the contact
+ * channel on those records (see features/auth/phone-claim.ts). A phone number
+ * alone is not ownership proof. Every claim leaves an audit trail.
  */
 export async function claimCustomerRecordsByPhone(
   userId: string,
   phone: string,
   db: PrismaClientOrTx = prisma,
 ): Promise<number> {
-  if (process.env.CUSTOMER_PHONE_AUTO_CLAIM !== "1") return 0;
-
   const unclaimed = await db.customer.findMany({
     where: { phone, userId: null, deletedAt: null },
     select: { id: true, garageId: true },

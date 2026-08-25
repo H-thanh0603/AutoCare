@@ -206,8 +206,28 @@ model User {
   assignedWorkTasks   WorkTask[]     @relation("AssignedTasks")
   advisedRepairOrders RepairOrder[]  @relation("RepairOrderAdvisor")
   workLogs            WorkLog[]
+  claimOtps           CustomerClaimOtp[]
 
   @@map("users")
+}
+
+/// One-time codes proving control of the contact channel stored on a garage
+/// customer record, before linking that record to a portal account.
+model CustomerClaimOtp {
+  id         String    @id @default(uuid())
+  userId     String
+  phone      String
+  /// bcrypt hash of the 6-digit code — never store the code itself.
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, phone, consumedAt])
+  @@map("customer_claim_otps")
 }
 
 model Garage {

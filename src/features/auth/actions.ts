@@ -10,16 +10,69 @@
 
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 import { findUserByEmail } from "@/data/users";
 import { UserRole } from "@/generated/prisma/enums";
-import { credentialsSchema, registerSchema } from "@/lib/auth-schema";
+import { credentialsSchema, phoneSchema, registerSchema } from "@/lib/auth-schema";
+import { getSessionUser } from "@/lib/auth";
 import { signIn, signOut } from "@/lib/auth";
-import { runAction, ValidationError, type ActionResult } from "@/lib/errors";
-import { RATE_LIMITS, checkRateLimit, resetRateLimit, resolveClientIp } from "@/lib/rate-limit";
+import { runAction, UnauthenticatedError, ValidationError, type ActionResult } from "@/lib/errors";
+import {
+  RATE_LIMITS,
+  assertRateLimit,
+  checkRateLimit,
+  resetRateLimit,
+  resolveClientIp,
+} from "@/lib/rate-limit";
 import { safeInternalPath } from "@/lib/utils";
 
 import { registerCustomer } from "./service";
+import { confirmPhoneClaim, requestPhoneClaimOtp } from "./phone-claim";
+
+/** Neutral message — identical whether or not a matching record exists. */
+const CLAIM_OTP_NEUTRAL_MESSAGE =
+  "Nếu tồn tại hồ sơ chưa liên kết với số điện thoại này (và có email), mã xác thực đã được gửi tới email đó.";
+
+export async function requestClaimOtpAction(
+  phone: string,
+): Promise<ActionResult<{ message: string }>> {
+  return runAction(async () => {
+    const user = await getSessionUser();
+    if (!user) throw new UnauthenticatedError();
+    const parsed = phoneSchema.safeParse(phone);
+    if (!parsed.success) throw new ValidationError("Số điện thoại không hợp lệ.");
+
+    await assertRateLimit({
+      key: `claim-otp-req:${user.id}`,
+      ...RATE_LIMITS.CLAIM_OTP_REQUEST,
+    });
+
+    await requestPhoneClaimOtp(user.id, parsed.data);
+    return { message: CLAIM_OTP_NEUTRAL_MESSAGE };
+  });
+}
+
+export async function confirmClaimOtpAction(
+  phone: string,
+  code: string,
+): Promise<ActionResult<{ linkedCustomerRecords: number }>> {
+  return runAction(async () => {
+    const user = await getSessionUser();
+    if (!user) throw new UnauthenticatedError();
+    const parsedPhone = phoneSchema.safeParse(phone);
+    if (!parsedPhone.success) throw new ValidationError("Số điện thoại không hợp lệ.");
+
+    await assertRateLimit({
+      key: `claim-otp-verify:${user.id}`,
+      ...RATE_LIMITS.CLAIM_OTP_VERIFY,
+    });
+
+    const result = await confirmPhoneClaim(user.id, parsedPhone.data, code);
+    revalidatePath("/tai-khoan");
+    return result;
+  });
+}
 
 /** Best-effort client IP; behind a proxy this comes from `x-forwarded-for`. */
 async function clientIp(): Promise<string> {

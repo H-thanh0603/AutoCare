@@ -21,6 +21,7 @@ import {
   listPortalVehicles,
 } from "@/data/portal";
 import { requireUserPage } from "@/features/auth/guards";
+import { ClaimRecordsForm } from "@/features/auth/claim-records-form";
 import {
   appointmentStatusLabel,
   repairOrderStatusLabel,
@@ -113,6 +114,9 @@ export default async function PortalPage() {
           </div>
         </div>
       </div>
+
+      {/* Link pre-existing garage records via OTP */}
+      <ClaimRecordsForm />
 
       {/* Vehicles Section */}
       <section aria-labelledby="portal-vehicles-heading" className="space-y-4">

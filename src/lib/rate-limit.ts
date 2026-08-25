@@ -9,6 +9,10 @@ export const RATE_LIMITS = {
   PORTAL_BOOKING: { limit: 20, windowMs: 60 * 60 * 1000 },
   /** Customer decisions on sent quotations (approve/reject items). */
   PORTAL_QUOTATION: { limit: 30, windowMs: 60 * 60 * 1000 },
+  /** Requesting a claim OTP for existing garage records. */
+  CLAIM_OTP_REQUEST: { limit: 3, windowMs: 15 * 60 * 1000 },
+  /** Entering/verifying claim OTP codes. */
+  CLAIM_OTP_VERIFY: { limit: 10, windowMs: 15 * 60 * 1000 },
 } as const;
 
 export interface RateLimitOptions {
