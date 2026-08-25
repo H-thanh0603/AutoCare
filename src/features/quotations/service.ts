@@ -3,7 +3,7 @@ import { syncWorkTasksFromQuotation } from "@/features/work-tasks/service";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { BusinessRuleError, ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { addMoney, calculateLineTotal } from "@/lib/money";
-import { prisma } from "@/lib/prisma";
+import { prisma, type PrismaTx } from "@/lib/prisma";
 import {
   assertQuotationTransition,
   assertQuotationItemTransition,
@@ -26,6 +26,16 @@ type QuotationDraftInput = {
     discountAmount: number;
   }>;
 };
+
+/**
+ * Serialize concurrent quotation decisions: two simultaneous item decisions
+ * (customer + manager) must not derive the header status from stale snapshots
+ * of each other's items. Locking the parent row serializes all decisions on
+ * the same quotation.
+ */
+async function lockQuotationRow(tx: PrismaTx, quotationId: string): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "quotations" WHERE "id" = ${quotationId} FOR UPDATE`;
+}
 
 function quotationItems(input: QuotationDraftInput) {
   if (input.items.length === 0) {
@@ -248,6 +258,26 @@ export async function decideQuotationItem(
   input: { status: QuotationItemStatus; customerNote: string | null },
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const itemRef = await tx.quotationItem.findFirst({
+      where: {
+        id: quotationItemId,
+        quotation: {
+          status: { in: ["SENT", "PARTIALLY_APPROVED"] },
+          repairOrder: {
+            customer: { userId },
+            vehicle: {
+              ownerships: {
+                some: { isCurrent: true, endedAt: null, customer: { userId } },
+              },
+            },
+          },
+        },
+      },
+      select: { quotationId: true },
+    });
+    if (!itemRef) throw new NotFoundError("Không tìm thấy hạng mục báo giá.");
+    await lockQuotationRow(tx, itemRef.quotationId);
+
     const item = await tx.quotationItem.findFirst({
       where: {
         id: quotationItemId,
@@ -327,6 +357,16 @@ export async function decideQuotationItemAsManager(
   }
 
   await prisma.$transaction(async (tx) => {
+    const itemRef = await tx.quotationItem.findFirst({
+      where: {
+        id: quotationItemId,
+        quotation: { garageId, status: { in: ["SENT", "PARTIALLY_APPROVED"] } },
+      },
+      select: { quotationId: true },
+    });
+    if (!itemRef) throw new NotFoundError("Quotation item not found.");
+    await lockQuotationRow(tx, itemRef.quotationId);
+
     const item = await tx.quotationItem.findFirst({
       where: {
         id: quotationItemId,
