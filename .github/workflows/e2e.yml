@@ -1,0 +1,72 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: autocare
+          POSTGRES_PASSWORD: autocare_ci
+          POSTGRES_DB: autocare_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://autocare:autocare_ci@localhost:5432/autocare_e2e
+      AUTH_SECRET: ci-e2e-secret-do-not-use-in-production
+      AUTH_URL: http://localhost:3000
+      REDIS_URL: redis://localhost:6379
+      E2E_CUSTOMER_EMAIL: khach1@gmail.com
+      E2E_CUSTOMER_PASSWORD: AutoCare@2026
+      E2E_MANAGER_EMAIL: quanly@garathanhdat.vn
+      E2E_RECEPTIONIST_EMAIL: letan@garathanhdat.vn
+      E2E_TECHNICIAN_EMAIL: kythuat1@garathanhdat.vn
+      E2E_CASHIER_EMAIL: thungan@garathanhdat.vn
+      E2E_STAFF_PASSWORD: AutoCare@2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
