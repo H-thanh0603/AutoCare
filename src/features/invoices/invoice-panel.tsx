@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { FileText, Loader2, Plus } from "lucide-react";
+import { CreditCard, Download, FileText, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import type { InvoiceStatus } from "@/generated/prisma/enums";
@@ -52,6 +52,24 @@ export function InvoicePanel({ repairOrderId, invoices, canInvoice, canPay }: Pr
     });
   }
 
+  async function handleVnpay(invoiceId: string) {
+    try {
+      const res = await fetch("/api/payment/vnpay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const data = await res.json();
+      if (data.ok && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        toast.error(data.message ?? "Không tạo được link thanh toán VNPay.");
+      }
+    } catch {
+      toast.error("Lỗi kết nối đến server.");
+    }
+  }
+
   return (
     <div className="space-y-4">
       {invoices.length === 0 ? (
@@ -64,7 +82,20 @@ export function InvoicePanel({ repairOrderId, invoices, canInvoice, canPay }: Pr
               <li key={invoice.id} className="rounded-lg border p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono font-medium text-sm">{invoice.code}</span>
-                  <Badge variant="secondary">{invoiceStatusLabel(invoice.status)}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{invoiceStatusLabel(invoice.status)}</Badge>
+                    {invoice.status !== "DRAFT" && (
+                      <a
+                        href={`/api/pdf/invoice/${invoice.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        <Download className="size-3" />
+                        PDF
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <span>Tổng: <strong>{formatVnd(invoice.totalAmount)}</strong></span>
@@ -130,6 +161,22 @@ export function InvoicePanel({ repairOrderId, invoices, canInvoice, canPay }: Pr
                         Ghi nhận thanh toán
                       </Button>
                     )
+                  ) : null}
+
+                  {canPay &&
+                  balance > 0 &&
+                  invoice.status !== "DRAFT" &&
+                  invoice.status !== "CANCELLED" &&
+                  invoice.status !== "REFUNDED" ? (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      disabled={isPending}
+                      onClick={() => handleVnpay(invoice.id)}
+                    >
+                      <CreditCard className="size-3.5 mr-1" />
+                      VNPay
+                    </Button>
                   ) : null}
                 </div>
               </li>

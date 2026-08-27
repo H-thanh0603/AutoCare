@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { CreditCard, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { InvoiceStatus } from "@/generated/prisma/enums";
@@ -38,12 +38,42 @@ export function InvoiceActions({ invoiceId, status, balance, canInvoice, canPay 
     });
   }
 
+  async function handleVnpay() {
+    try {
+      const res = await fetch("/api/payment/vnpay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const data = await res.json();
+      if (data.ok && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        toast.error(data.message ?? "Không tạo được link thanh toán VNPay.");
+      }
+    } catch {
+      toast.error("Lỗi kết nối đến server.");
+    }
+  }
+
   const canReceivePayment = balance > 0 && status !== "DRAFT" && status !== "CANCELLED" && status !== "REFUNDED";
 
   if (!canInvoice && !canPay) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+      {status !== "DRAFT" && (
+        <a
+          href={`/api/pdf/invoice/${invoiceId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          <Download className="size-3" />
+          Xuất PDF
+        </a>
+      )}
+
       {canInvoice && status === "DRAFT" ? (
         <>
           <Button
@@ -97,6 +127,13 @@ export function InvoiceActions({ invoiceId, status, balance, canInvoice, canPay 
             Ghi nhận thanh toán
           </Button>
         )
+      ) : null}
+
+      {canPay && canReceivePayment ? (
+        <Button size="sm" variant="default" disabled={isPending} onClick={handleVnpay}>
+          <CreditCard className="size-3.5 mr-1" />
+          VNPay
+        </Button>
       ) : null}
     </div>
   );

@@ -103,6 +103,7 @@ enum PaymentMethod {
   CASH
   BANK_TRANSFER
   CARD
+  VNPAY
   OTHER
 }
 
@@ -236,6 +237,8 @@ model Garage {
   address   String?
   phone     String?
   email     String?
+  /// Mã số thuế garage (MST) — cần cho hóa đơn GTGT.
+  taxCode    String?
   /// Garage-level settings, e.g. { "allowNegativeStock": false }
   settings  Json     @default("{}")
   createdAt DateTime @default(now())
@@ -700,6 +703,10 @@ model Invoice {
   garageId       String
   /// Human-readable code, unique per garage, e.g. INV-2026-0001.
   code           String
+  /// E-invoice form symbol: 1=GTGT, 2=Bán hàng (TT 78).
+  invoiceFormSymbol String    @default("1")
+  /// E-invoice serial, e.g. 1C26TAA (TT 78).
+  invoiceSerial  String?
   repairOrderId  String?
   customerId     String
   status         InvoiceStatus @default(DRAFT)
