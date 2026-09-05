@@ -19,9 +19,10 @@ cho từng hạng mục; không lặp lại danh sách gốc mà không có chi 
 
 - Bắt buộc cho: endpoint đăng nhập (`/api/auth/*` hoặc route login), và các endpoint nhạy cảm
   khác (tạo share link, upload media, gửi báo giá).
-- MVP: rate limit theo IP + theo tài khoản (nếu đã xác định) bằng bộ nhớ tiến trình hoặc bảng
-  đếm trong PostgreSQL (không cần Redis riêng cho MVP một garage — nếu tải tăng, tách sang Redis
-  sau, ghi ADR khi đổi).
+- Rate limit theo IP + theo tài khoản. Khi `REDIS_URL` được cấu hình, giới hạn
+  được thực thi phân tán qua Redis (dùng chung cho mọi instance); khi để trống,
+  fallback về store trong bộ nhớ tiến trình (chỉ phù hợp dev single-instance,
+  KHÔNG dùng cho multi-instance/serverless production).
 - Giới hạn đề xuất: đăng nhập tối đa 5 lần thất bại/15 phút/IP+email, sau đó khóa tạm thời và trả
   thông báo rõ ràng không lộ chi tiết (không nói "sai password" khác với "không tồn tại email").
 
