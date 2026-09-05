@@ -9,7 +9,7 @@ import {
   getPortalAppointment,
 } from "@/data/portal";
 import type { AppointmentInput } from "@/features/appointments/schema";
-import { assertAppointmentSlot } from "@/lib/appointment-settings";
+import { assertAppointmentSlot, buildSlotsForDay } from "@/lib/appointment-settings";
 import { AUDIT_ACTIONS, recordAudit } from "@/lib/audit";
 import { getGarageById } from "@/data/garages";
 import { BusinessRuleError, NotFoundError } from "@/lib/errors";
@@ -307,4 +307,134 @@ export async function rescheduleCustomerAppointment(
     );
     return replacement;
   });
+}
+
+export interface SlotAvailability {
+  start: Date;
+  end: Date;
+  booked: number;
+  /** Null when capacity is unlimited (maxConcurrentPerSlot = 0). */
+  remaining: number | null;
+  overbooked: boolean;
+  full: boolean;
+}
+
+export interface DayAvailability {
+  date: string;
+  capacity: number;
+  slotMinutes: number;
+  slots: SlotAvailability[];
+}
+
+const ACTIVE_BOOKING_STATUS = ["PENDING", "CONFIRMED"] as const;
+
+/**
+ * Per-slot remaining capacity for one garage-local day (YYYY-MM-DD).
+ * Powers "khung giờ còn trống" UI and the overload warning on /cai-dat.
+ * Counts every PENDING/CONFIRMED booking overlapping each slot — the same
+ * population the booking-time capacity check enforces.
+ */
+export async function getDaySlotAvailability(
+  garageId: string,
+  date: string,
+): Promise<DayAvailability> {
+  const settings = await getGarageAppointmentSettings(garageId);
+  const slots = buildSlotsForDay(settings, date);
+  const capacity = settings.maxConcurrentPerSlot;
+
+  if (slots.length === 0) {
+    return { date, capacity, slotMinutes: settings.appointmentSlotMinutes, slots: [] };
+  }
+
+  const dayStart = slots[0].start;
+  const dayEnd = slots[slots.length - 1].end;
+  const bookings = await prisma.appointment.findMany({
+    where: {
+      garageId,
+      status: { in: [...ACTIVE_BOOKING_STATUS] },
+      scheduledAt: { lt: dayEnd },
+      endsAt: { gt: dayStart },
+    },
+    select: { scheduledAt: true, endsAt: true },
+  });
+
+  const result: DayAvailability = {
+    date,
+    capacity,
+    slotMinutes: settings.appointmentSlotMinutes,
+    slots: slots.map((slot) => {
+      const booked = bookings.filter(
+        (b) => b.scheduledAt < slot.end && b.endsAt > slot.start,
+      ).length;
+      const remaining = capacity > 0 ? capacity - booked : null;
+      return {
+        ...slot,
+        booked,
+        remaining,
+        overbooked: capacity > 0 && booked > capacity,
+        full: capacity > 0 && booked >= capacity,
+      };
+    }),
+  };
+  return result;
+}
+
+export interface OverloadedDay {
+  date: string;
+  capacity: number;
+  slots: { start: Date; end: Date; booked: number }[];
+}
+
+/**
+ * Days in the next `daysAhead` days with at least one slot over capacity.
+ * Shown on /cai-dat so managers see the impact before/after lowering
+ * `maxConcurrentPerSlot`. Returns [] when capacity is unlimited.
+ * One booking query for the whole window; slot math stays in memory.
+ */
+export async function getUpcomingOverload(
+  garageId: string,
+  daysAhead = 14,
+): Promise<OverloadedDay[]> {
+  const settings = await getGarageAppointmentSettings(garageId);
+  const capacity = settings.maxConcurrentPerSlot;
+  if (capacity <= 0 || daysAhead <= 0) return [];
+
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + daysAhead * 86_400_000);
+  const bookings = await prisma.appointment.findMany({
+    where: {
+      garageId,
+      status: { in: [...ACTIVE_BOOKING_STATUS] },
+      scheduledAt: { lt: windowEnd },
+      endsAt: { gt: now },
+    },
+    select: { scheduledAt: true, endsAt: true },
+  });
+
+  const overloaded: OverloadedDay[] = [];
+  for (let offset = 0; offset < daysAhead; offset++) {
+    const cursor = new Date(now.getTime() + offset * 86_400_000);
+    // Garage-local calendar day for the cursor instant.
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(cursor);
+    const slots = buildSlotsForDay(settings, parts);
+    if (slots.length === 0) continue;
+
+    const bad = slots
+      .map((slot) => ({
+        ...slot,
+        booked: bookings.filter((b) => b.scheduledAt < slot.end && b.endsAt > slot.start)
+          .length,
+      }))
+      .filter((s) => s.booked > capacity)
+      .map(({ start, end, booked }) => ({ start, end, booked }));
+
+    if (bad.length > 0) overloaded.push({ date: parts, capacity, slots: bad });
+    if (overloaded.length >= 10) break;
+  }
+  return overloaded;
 }

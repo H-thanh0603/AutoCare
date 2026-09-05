@@ -26,6 +26,12 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
 };
 
 const TIME_ZONE = "Asia/Ho_Chi_Minh";
+/**
+ * Fixed UTC offset of the garage timezone. Asia/Ho_Chi_Minh has no DST, so
+ * wall-clock conversion is a constant shift. If the garage ever moves to a
+ * DST-observing timezone, replace this with Intl-based conversion.
+ */
+const GARAGE_UTC_OFFSET_MINUTES = 7 * 60;
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sun: 0,
@@ -137,4 +143,72 @@ export function assertAppointmentSlot(
     throw new BusinessRuleError("Khung giờ hẹn vượt quá giờ làm việc.");
   }
   return endsAt;
+}
+
+export interface DaySlot {
+  start: Date;
+  end: Date;
+}
+
+const YMD_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Parse a `YYYY-MM-DD` calendar date (garage-local day). */
+export function parseYmd(ymd: string): { year: number; month: number; day: number } {
+  const match = YMD_PATTERN.exec(ymd);
+  if (!match) throw new BusinessRuleError("Ngày không hợp lệ (dùng định dạng YYYY-MM-DD).");
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    throw new BusinessRuleError("Ngày không hợp lệ (dùng định dạng YYYY-MM-DD).");
+  }
+  // Reject overflow dates like 2026-02-30.
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    throw new BusinessRuleError("Ngày không hợp lệ (dùng định dạng YYYY-MM-DD).");
+  }
+  return { year, month, day };
+}
+
+/** Convert a garage-local wall time to an absolute Date. */
+export function garageWallToDate(
+  year: number,
+  month: number,
+  day: number,
+  minutes: number,
+): Date {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return new Date(
+    Date.UTC(year, month - 1, day, 0, mins - GARAGE_UTC_OFFSET_MINUTES + hours * 60),
+  );
+}
+
+/**
+ * Build all bookable slots for a garage-local calendar day from settings.
+ * Returns [] for days the garage is closed. Slot boundaries follow the same
+ * rules as `assertAppointmentSlot` (aligned to opening time, never past close).
+ */
+export function buildSlotsForDay(settings: AppointmentSettings, ymd: string): DaySlot[] {
+  const { year, month, day } = parseYmd(ymd);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const hours = settings.workingHours[weekday];
+  if (!hours) return [];
+
+  const open = minutes(hours.open);
+  const close = minutes(hours.close);
+  const slotMinutes = settings.appointmentSlotMinutes;
+
+  const slots: DaySlot[] = [];
+  for (let start = open; start + slotMinutes <= close; start += slotMinutes) {
+    slots.push({
+      start: garageWallToDate(year, month, day, start),
+      end: garageWallToDate(year, month, day, start + slotMinutes),
+    });
+  }
+  return slots;
 }

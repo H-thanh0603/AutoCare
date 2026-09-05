@@ -15,6 +15,7 @@ import {
 import { getGarageById } from "@/data/garages";
 import { requireStaffPermissionPage } from "@/features/auth/guards";
 import { AppointmentSettingsForm } from "@/features/appointments/settings-form";
+import { getUpcomingOverload } from "@/features/appointments/service";
 import { updateAppointmentSettingsFormAction } from "@/features/appointments/actions";
 import { prisma } from "@/lib/prisma";
 
@@ -28,16 +29,24 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
   year: "numeric",
 });
 
+const SLOT_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Asia/Ho_Chi_Minh",
+});
+
 export default async function SettingsPage() {
   const { garageId } = await requireStaffPermissionPage("/cai-dat", "garage-member:read");
 
-  const [garage, members] = await Promise.all([
+  const [garage, members, overload] = await Promise.all([
     getGarageById(garageId),
     prisma.garageMember.findMany({
       where: { garageId, isActive: true },
       include: { user: { select: { id: true, name: true, email: true, phone: true } } },
       orderBy: { createdAt: "asc" },
     }),
+    getUpcomingOverload(garageId, 14),
   ]);
 
   const openDaysCount = Object.keys(garage.appointmentSettings.workingHours || {}).length;
@@ -140,6 +149,26 @@ export default async function SettingsPage() {
           <Calendar className="size-5 text-emerald-600" />
           <span>Cấu Hình Lịch Làm Việc & Đặt Lịch Hẹn</span>
         </h2>
+        {overload.length > 0 ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
+            <p className="font-bold mb-2">
+              ⚠️ {overload.length} ngày trong 2 tuần tới có khung giờ vượt sức chứa — cân nhắc
+              tăng sức chứa hoặc dời lịch:
+            </p>
+            <ul className="space-y-1">
+              {overload.map((day) => (
+                <li key={day.date}>
+                  <strong className="font-mono">{day.date}</strong>
+                  {day.slots.map((s) => (
+                    <span key={s.start.toISOString()} className="ml-2 font-mono">
+                      {SLOT_TIME_FORMATTER.format(s.start)}–{SLOT_TIME_FORMATTER.format(s.end)} ({s.booked}/{day.capacity} xe)
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {garage.appointmentSettings ? (
           <AppointmentSettingsForm settings={garage.appointmentSettings} action={updateAppointmentSettingsFormAction} />
         ) : (
