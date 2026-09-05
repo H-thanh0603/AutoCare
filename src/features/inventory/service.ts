@@ -437,6 +437,30 @@ export async function returnPartStock(input: {
 
 const PART_LIST_LIMIT = 200;
 
+/**
+ * Exact SKU lookup for barcode-scanner flows. Scanners act as keyboards, so
+ * the scanned text lands verbatim (often lowercase / padded) — normalize the
+ * same way `createPart` does and match exactly, garage-scoped.
+ */
+export async function lookupPartBySku(garageId: string, sku: string) {
+  const normalized = sku.trim().toUpperCase();
+  if (!normalized) throw new ValidationError("Mã SKU là bắt buộc.");
+  const part = await prisma.part.findFirst({
+    where: { garageId, sku: normalized, isActive: true },
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      unit: true,
+      quantityInStock: true,
+    },
+  });
+  if (!part) {
+    throw new NotFoundError(`Không tìm thấy phụ tùng với mã SKU "${normalized}".`);
+  }
+  return part;
+}
+
 export async function getParts(garageId: string, search?: string) {
   return prisma.part.findMany({
     where: {

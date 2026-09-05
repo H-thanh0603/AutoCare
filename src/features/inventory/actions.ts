@@ -5,6 +5,7 @@ import {
   adjustPartStock,
   createPart,
   issuePartForTask,
+  lookupPartBySku,
   receivePartStock,
   returnPartStock,
   updatePart,
@@ -101,5 +102,18 @@ export async function returnStockAction(partId: string, workTaskId: string, quan
       reason,
       actorUserId: user.id,
     });
+  });
+}
+
+/**
+ * Exact SKU lookup for barcode-scanner flows (scanners type the code +
+ * Enter). Garage-scoped; read-only permission so receptionists and
+ * technicians can resolve a scanned code.
+ */
+export async function lookupPartBySkuAction(sku: string) {
+  return runAction(async () => {
+    const user = requirePermission(await getSessionUser(), "inventory:read");
+    const { garageId } = requireGarageScope(user);
+    return lookupPartBySku(garageId, sku);
   });
 }
