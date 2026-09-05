@@ -42,6 +42,7 @@
     "posthog-js": "^1.415.3",
     "pusher": "^5.3.4",
     "pusher-js": "^8.6.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-email": "^6.9.2",

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Copy, Link2, Loader2, Share2, Trash2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 
 import { createShareLinkAction, revokeShareLinkAction } from "@/features/vehicle-health/actions";
@@ -105,13 +106,18 @@ export function ShareLinkManager({
           {links.map((link) => (
             <li
               key={link.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
             >
-              <div className="min-w-0">
-                <p className="truncate font-mono text-xs text-slate-700">{shareUrl(link.token)}</p>
-                <p className="text-[11px] text-slate-400">
-                  {link.expiresAt ? `Hết hạn: ${DATE_FORMATTER.format(new Date(link.expiresAt))}` : "Không hết hạn"}
-                </p>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="shrink-0 rounded-xl border border-slate-200 bg-white p-1.5" title="Quét để mở hồ sơ xe — in ra để dán lên xe/sổ bảo dưỡng">
+                  <QRCodeSVG value={shareUrl(link.token)} size={84} />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs text-slate-700">{shareUrl(link.token)}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {link.expiresAt ? `Hết hạn: ${DATE_FORMATTER.format(new Date(link.expiresAt))}` : "Không hết hạn"}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Button type="button" size="sm" variant="outline" onClick={() => onCopy(link.token)}>
